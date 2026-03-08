@@ -612,6 +612,11 @@ export default function My9V3App({
           setSearchQuery(value);
           setSearchError("");
           setSearchActiveIndex(-1);
+          if (value.trim().length === 0) {
+            setSearchResults([]);
+            setSearchCommittedQuery("");
+            setSearchMeta(createSearchMeta(defaultSuggestions));
+          }
         }}
         loading={searchLoading}
         error={searchError}

@@ -94,14 +94,19 @@ export function SearchDialog({
     return [...top, ...rest];
   }, [results, topPickIds]);
 
+  const hasSearchedCurrentQuery = useMemo(() => {
+    const committed = committedQuery.trim();
+    return committed.length > 0 && committed === trimmedQuery;
+  }, [committedQuery, trimmedQuery]);
+
   const state: ViewState = useMemo(() => {
     if (loading) return "searching";
     if (error) return "error";
     if (trimmedQuery.length === 0) return "idle";
-    if (orderedResults.length > 0) return "success";
-    if (trimmedQuery.length > 0 || noResultQuery) return "no-results";
+    if (hasSearchedCurrentQuery && orderedResults.length > 0) return "success";
+    if (hasSearchedCurrentQuery && orderedResults.length === 0) return "no-results";
     return "idle";
-  }, [error, loading, noResultQuery, orderedResults.length, trimmedQuery]);
+  }, [error, hasSearchedCurrentQuery, loading, orderedResults.length, trimmedQuery]);
 
   useEffect(() => {
     if (!open) return;
