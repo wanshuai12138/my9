@@ -177,15 +177,13 @@ export default function My9V3App({
     try {
       const raw = localStorage.getItem(draftStorageKey);
       const creatorRaw = localStorage.getItem(CREATOR_STORAGE_KEY);
-      let legacyCreatorName = "";
       if (raw) {
         const parsed = JSON.parse(raw);
         const savedGames = Array.isArray(parsed?.games) ? parsed.games : null;
         if (savedGames && savedGames.length === 9) {
           setGames(savedGames);
-        }
-        if (typeof parsed?.creatorName === "string") {
-          legacyCreatorName = parsed.creatorName;
+        } else {
+          setGames(createEmptyGames());
         }
       } else {
         setGames(createEmptyGames());
@@ -193,15 +191,12 @@ export default function My9V3App({
 
       if (typeof creatorRaw === "string") {
         setCreatorName(creatorRaw);
-      } else if (legacyCreatorName) {
-        // Migrate creator name from legacy per-kind draft into global creator storage.
-        setCreatorName(legacyCreatorName);
-        localStorage.setItem(CREATOR_STORAGE_KEY, legacyCreatorName);
       } else {
         setCreatorName("");
       }
     } catch {
-      // ignore invalid local draft
+      setGames(createEmptyGames());
+      setCreatorName("");
     } finally {
       setDraftHydrated(true);
     }

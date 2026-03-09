@@ -96,14 +96,6 @@ async function mockV3Apis(page: Page) {
     });
   });
 
-  await page.route(/\/api\/share-image\/[^/?]+/, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: Buffer.from(ONE_PIXEL_PNG_BASE64, "base64"),
-    });
-  });
-
   await page.route(/https:\/\/wsrv\.nl\/\?url=/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -113,28 +105,6 @@ async function mockV3Apis(page: Page) {
   });
 
   await page.route(/\/api\/subjects\/search\?/, async (route) => {
-    const url = new URL(route.request().url());
-    const q = (url.searchParams.get("q") || "").trim();
-    const kind = (url.searchParams.get("kind") || DEFAULT_KIND).trim();
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(buildSearchResponse(q, kind)),
-    });
-  });
-
-  await page.route(/\/api\/games\/search\?/, async (route) => {
-    const url = new URL(route.request().url());
-    const q = (url.searchParams.get("q") || "").trim();
-    const kind = (url.searchParams.get("kind") || DEFAULT_KIND).trim();
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(buildSearchResponse(q, kind)),
-    });
-  });
-
-  await page.route(/\/api\/search\?/, async (route) => {
     const url = new URL(route.request().url());
     const q = (url.searchParams.get("q") || "").trim();
     const kind = (url.searchParams.get("kind") || DEFAULT_KIND).trim();
