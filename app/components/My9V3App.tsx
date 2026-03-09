@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,25 @@ function cloneGames(games: Array<ShareGame | null>) {
 }
 
 const CREATOR_STORAGE_KEY = "my-nine-creator:v1";
+const SEARCH_CLIENT_CACHE_TTL_MS = 3 * 60 * 1000;
+const SEARCH_CLIENT_CACHE_MAX = 128;
+
+type SearchClientCacheEntry = {
+  expiresAt: number;
+  response: SubjectSearchResponse;
+};
+
+function buildSearchClientCacheKey(kind: SubjectKind, query: string) {
+  return `${kind}:${query.trim().toLocaleLowerCase()}`;
+}
+
+function trimSearchClientCache(cache: Map<string, SearchClientCacheEntry>) {
+  while (cache.size > SEARCH_CLIENT_CACHE_MAX) {
+    const firstKey = cache.keys().next().value;
+    if (!firstKey) return;
+    cache.delete(firstKey);
+  }
+}
 
 interface My9V3AppProps {
   kind: SubjectKind;
@@ -91,6 +110,7 @@ export default function My9V3App({
   const [searchResults, setSearchResults] = useState<ShareGame[]>([]);
   const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
   const [searchCommittedQuery, setSearchCommittedQuery] = useState("");
+  const searchClientCacheRef = useRef<Map<string, SearchClientCacheEntry>>(new Map());
   const [searchMeta, setSearchMeta] = useState<SearchMeta>(
     createSearchMeta([`可尝试${kindMeta.label}正式名或别名`, "中日英名称切换检索通常更有效", "减少关键词，仅保留核心词"])
   );
@@ -129,9 +149,7 @@ export default function My9V3App({
     async function loadShared() {
       setLoadingShare(true);
       try {
-        const response = await fetch(`/api/share?id=${encodeURIComponent(currentShareId)}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(`/api/share?id=${encodeURIComponent(currentShareId)}`);
         const json = await response.json();
         if (!active) return;
         if (!response.ok || !json?.ok) {
@@ -276,16 +294,36 @@ export default function My9V3App({
       return;
     }
 
+    const cacheKey = buildSearchClientCacheKey(kind, q);
+    const cached = searchClientCacheRef.current.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      const response = cached.response;
+      setSearchError("");
+      setSearchCommittedQuery(q);
+      setSearchResults(Array.isArray(response.items) ? response.items : []);
+      setSearchMeta({
+        topPickIds: Array.isArray(response.topPickIds) ? response.topPickIds : [],
+        suggestions:
+          Array.isArray(response.suggestions) && response.suggestions.length > 0
+            ? response.suggestions
+            : defaultSuggestions,
+        noResultQuery: typeof response.noResultQuery === "string" ? response.noResultQuery : null,
+      });
+      setSearchActiveIndex(response.items.length > 0 ? 0 : -1);
+      return;
+    }
+
+    if (cached) {
+      searchClientCacheRef.current.delete(cacheKey);
+    }
+
     setSearchLoading(true);
     setSearchError("");
     setSearchActiveIndex(-1);
     setSearchCommittedQuery(q);
 
     try {
-      const response = await fetch(
-        `/api/subjects/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}`,
-        { cache: "no-store" }
-      );
+      const response = await fetch(`/api/subjects/search?q=${encodeURIComponent(q)}&kind=${encodeURIComponent(kind)}`);
       const json = (await response.json()) as Partial<SubjectSearchResponse> & {
         ok?: boolean;
         error?: string;
@@ -298,16 +336,32 @@ export default function My9V3App({
         return;
       }
 
-      setSearchResults(Array.isArray(json.items) ? json.items : []);
-      setSearchMeta({
+      const nextResponse: SubjectSearchResponse = {
+        ok: true,
+        source: "bangumi",
+        kind,
+        items: Array.isArray(json.items) ? json.items : [],
         topPickIds: Array.isArray(json.topPickIds) ? json.topPickIds : [],
         suggestions:
           Array.isArray(json.suggestions) && json.suggestions.length > 0
             ? json.suggestions
             : defaultSuggestions,
         noResultQuery: typeof json.noResultQuery === "string" ? json.noResultQuery : null,
+      };
+
+      searchClientCacheRef.current.set(cacheKey, {
+        expiresAt: Date.now() + SEARCH_CLIENT_CACHE_TTL_MS,
+        response: nextResponse,
       });
-      setSearchActiveIndex(0);
+      trimSearchClientCache(searchClientCacheRef.current);
+
+      setSearchResults(nextResponse.items);
+      setSearchMeta({
+        topPickIds: nextResponse.topPickIds,
+        suggestions: nextResponse.suggestions,
+        noResultQuery: nextResponse.noResultQuery,
+      });
+      setSearchActiveIndex(nextResponse.items.length > 0 ? 0 : -1);
     } catch {
       setSearchError("搜索失败，请稍后再试");
       setSearchResults([]);

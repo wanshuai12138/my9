@@ -7,6 +7,17 @@ import { parseSubjectKind } from "@/lib/subject-kind";
 const MAX_CREATOR_LENGTH = 40;
 const MAX_COMMENT_LENGTH = 140;
 const VALID_GAME_TYPES = new Set<GameTypeId>([0, 1, 2, 3, 4, 8, 9, 10, 11]);
+const SHARE_GET_CDN_TTL_SECONDS = 3600;
+const SHARE_GET_STALE_TTL_SECONDS = 86400;
+const SHARE_GET_CACHE_CONTROL_VALUE = `public, max-age=0, s-maxage=${SHARE_GET_CDN_TTL_SECONDS}, stale-while-revalidate=${SHARE_GET_STALE_TTL_SECONDS}`;
+
+function createShareGetCacheHeaders() {
+  return {
+    "Cache-Control": SHARE_GET_CACHE_CONTROL_VALUE,
+    "CDN-Cache-Control": SHARE_GET_CACHE_CONTROL_VALUE,
+    "Vercel-CDN-Cache-Control": SHARE_GET_CACHE_CONTROL_VALUE,
+  };
+}
 
 function sanitizeString(value: unknown): string {
   if (typeof value !== "string") return "";
@@ -184,5 +195,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     ...share,
+  }, {
+    headers: createShareGetCacheHeaders(),
   });
 }
