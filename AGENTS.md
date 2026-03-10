@@ -25,9 +25,9 @@
 - `npm start`：启动生产构建产物。
 - `npm run lint`：运行 ESLint。
 - `npm run test:e2e`：运行 Playwright E2E。
-- `npm run migrate:shares:v1-to-v2`：将 `my9_shares_v1` 迁移到 v2 存储模型（支持 checkpoint）。
-- `npm run verify:shares:v2-migration`：校验迁移覆盖率（`missing_count`/`orphan_alias_count`）。
-- `npm run archive:shares:cold`：归档 30 天前热数据到 R2，并清理过旧日粒度趋势计数。
+- `node scripts/migrate-shares-v1-to-v2.mjs`：将 `my9_shares_v1` 迁移到 v2 存储模型（支持 checkpoint）。
+- `node scripts/verify-shares-v2-migration.mjs`：校验迁移覆盖率（`missing_count`/`orphan_alias_count`）。
+- `node scripts/archive-shares-cold.mjs`：归档 30 天前热数据到 R2，并清理过旧日粒度趋势计数。
 
 说明：
 - 仓库以 `npm` + `package-lock.json` 为准，避免切换包管理器引发锁文件噪音。
@@ -74,8 +74,8 @@
 - 严禁提交任何真实密钥（Neon/R2/CRON）。若误泄露，必须立即旋转并更新环境变量。
 
 ## 分享存储 v2 运维
-- 迁移脚本默认读取 `my9_shares_v1`，并写入 `my9_share_registry_v2` / `my9_share_alias_v1` / `my9_subject_dim_v1` / `my9_trend_count_*`。
-- 迁移完成后先执行 `npm run verify:shares:v2-migration`；仅当 `missing_count=0` 且 `orphan_alias_count=0` 才允许考虑关闭 v1 兜底。
+- 迁移脚本默认读取 `my9_shares_v1`，并写入 `my9_share_registry_v2` / `my9_share_alias_v1` / `my9_subject_dim_v1` / `my9_trend_subject_*`。
+- 迁移完成后先执行 `node scripts/verify-shares-v2-migration.mjs`；仅当 `missing_count=0` 且 `orphan_alias_count=0` 才允许考虑关闭 v1 兜底。
 - 日常归档通过 `app/api/cron/archive` 触发，调度配置在 `vercel.json`（当前每天一次，Hobby 层级可用）。
 - 生产切换顺序：`v2 优先 + v1 兜底` -> 全量迁移与校验 -> 关闭兜底 -> 稳定观察后再删除 v1 表。
 

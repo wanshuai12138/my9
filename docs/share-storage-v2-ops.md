@@ -18,13 +18,13 @@
 Run idempotent migration with checkpoint:
 
 ```bash
-npm run migrate:shares:v1-to-v2
+node scripts/migrate-shares-v1-to-v2.mjs
 ```
 
 Useful flags:
 
-- `--batch-size=300`
-- `--max-rows=5000`
+- `node scripts/migrate-shares-v1-to-v2.mjs --batch-size=300`
+- `node scripts/migrate-shares-v1-to-v2.mjs --max-rows=5000`
 
 Checkpoint file: `scripts/.migrate-shares-v1.checkpoint.json`
 
@@ -33,7 +33,7 @@ Checkpoint file: `scripts/.migrate-shares-v1.checkpoint.json`
 Run migration consistency checks (`old`, `v2`, `alias`, `missing`):
 
 ```bash
-npm run verify:shares:v2-migration
+node scripts/verify-shares-v2-migration.mjs
 ```
 
 ## Trend table rebuild (subject-grain)
@@ -48,24 +48,38 @@ They only store `subject_id + count` (no `kind/view/bucket`) to reduce write amp
 Rebuild from old trend tables and drop old heavy tables:
 
 ```bash
-npm run rebuild:trends:subject-v2
+node scripts/rebuild-trends-subject-v2.mjs
 ```
 
 Optional flag:
 
-- `-- --reset` (truncate new trend tables before rebuild)
+- `node scripts/rebuild-trends-subject-v2.mjs --reset` (truncate new trend tables before rebuild)
 
-## Cold archive + day-count cleanup
+## DB usage monitor
 
 ```bash
-npm run archive:shares:cold
+node scripts/monitor-db-usage.mjs
 ```
 
 Useful flags:
 
-- `--older-than-days=30`
-- `--batch-size=500`
-- `--cleanup-trend-days=190`
+- `node scripts/monitor-db-usage.mjs --json`
+- `node scripts/monitor-db-usage.mjs --max-mb=512 --warn-percent=70 --critical-percent=90`
+- `node scripts/monitor-db-usage.mjs --top=15`
+- `node scripts/monitor-db-usage.mjs --fail-on=warn` or `--fail-on=critical`
+- `node scripts/monitor-db-usage.mjs --exact-counts` (slower, full table count)
+
+## Cold archive + day-count cleanup
+
+```bash
+node scripts/archive-shares-cold.mjs
+```
+
+Useful flags:
+
+- `node scripts/archive-shares-cold.mjs --older-than-days=30`
+- `node scripts/archive-shares-cold.mjs --batch-size=500`
+- `node scripts/archive-shares-cold.mjs --cleanup-trend-days=190`
 
 ## Vercel Cron (daily, Hobby-safe)
 

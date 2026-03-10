@@ -140,20 +140,23 @@ export function SiteFooter({ className }: SiteFooterProps) {
           <DialogTrigger asChild>
             <button
               type="button"
-              className="bg-transparent p-0 text-slate-600 transition-colors hover:text-slate-800 hover:underline"
+              className="bg-transparent p-0 text-red-600 transition-colors hover:text-slate-800 hover:underline"
             >
-              我要支援
+              支援开发者
             </button>
           </DialogTrigger>
-          <DialogContent className="w-[92vw] max-w-sm rounded-2xl p-5">
+          <DialogContent className="w-[92vw] max-w-xl rounded-2xl p-5">
             <DialogHeader>
               <DialogTitle>感谢支持</DialogTitle>
               <DialogDescription className="space-y-1.5 text-slate-600">
                 <span className="block">
-                  意料之外的流行让服务器不堪重负……
+                  上线第一天本项目就已经生成了 31962 份大家的构成！可喜可贺（啪叽啪叽）
                 </span>
                 <span className="block">
-                  虽然在自费解决，如果有谁愿意帮忙就太好了呢。
+                  但与此同时，意料之外的流行也让服务器开始不堪重负……
+                </span>
+                <span className="block">
+                  虽然在努力想办法解决，如果有谁愿意帮忙就太好了呢。
                 </span>
                 <span className="block">
                   也非常欢迎通过
