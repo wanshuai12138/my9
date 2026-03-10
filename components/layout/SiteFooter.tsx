@@ -57,7 +57,9 @@ export function SiteFooter({ className }: SiteFooterProps) {
     process.env.NEXT_PUBLIC_FEEDBACK_TALLY_URL?.trim();
   const tallyEmbedUrl = tallyFormUrl ? buildTallyEmbedUrl(tallyFormUrl) : "";
   const wechatPayQrUrl = process.env.NEXT_PUBLIC_WECHAT_PAY_QR_URL?.trim();
+  const fallbackWechatPayQrUrl = "/wechatpay.png";
   const [collectedCount, setCollectedCount] = useState<number | null>(null);
+  const [wechatPayQrSrc, setWechatPayQrSrc] = useState(wechatPayQrUrl ?? fallbackWechatPayQrUrl);
 
   useEffect(() => {
     let active = true;
@@ -228,9 +230,14 @@ export function SiteFooter({ className }: SiteFooterProps) {
               <div className="mt-3 flex justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={wechatPayQrUrl}
+                  src={wechatPayQrSrc}
                   alt="微信赞赏码"
                   className="h-80 w-80 rounded-lg border border-slate-200 object-contain"
+                  onError={() => {
+                    setWechatPayQrSrc((current) =>
+                      current === fallbackWechatPayQrUrl ? current : fallbackWechatPayQrUrl
+                    );
+                  }}
                 />
               </div>
             ) : (
