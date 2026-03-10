@@ -7,6 +7,9 @@ import {
   TrendView,
 } from "@/lib/share/types";
 
+const OVERALL_TREND_LIMIT = 100;
+const GROUPED_TOP_GAMES_LIMIT = 5;
+
 function gameKey(id: string | number, name: string) {
   const idPart = String(id).trim();
   if (idPart) return idPart;
@@ -61,7 +64,7 @@ function buildOverallBuckets(shares: StoredShareV1[]): TrendBucket[] {
     }
   }
 
-  const ranking = sortByCount(Array.from(gameCount.values())).slice(0, 30);
+  const ranking = sortByCount(Array.from(gameCount.values())).slice(0, OVERALL_TREND_LIMIT);
   return ranking.map((game, index) => ({
     key: String(index + 1),
     label: `#${index + 1}`,
@@ -109,16 +112,16 @@ function buildGenreBuckets(shares: StoredShareV1[]): TrendBucket[] {
   const buckets: TrendBucket[] = [];
   for (const [genre, games] of Array.from(genreMap.entries())) {
     const sortedGames = sortByCount(Array.from(games.values()));
-    const total = sortedGames.reduce((sum, item) => sum + item.count, 0);
+    const topGames = sortedGames.slice(0, GROUPED_TOP_GAMES_LIMIT);
     buckets.push({
       key: genre,
       label: genre,
-      count: total,
-      games: sortedGames.slice(0, 10),
+      count: sortedGames.reduce((sum, item) => sum + item.count, 0),
+      games: topGames,
     });
   }
 
-  return sortByCount(buckets).slice(0, 30);
+  return sortByCount(buckets).slice(0, 20);
 }
 
 function buildYearLikeBuckets(
@@ -162,8 +165,9 @@ function buildYearLikeBuckets(
 
   const buckets: TrendBucket[] = [];
   for (const [bucket, gameMap] of Array.from(bucketMap.entries())) {
-    const games = sortByCount(Array.from(gameMap.values())).slice(0, 5);
-    const total = games.reduce((sum, item) => sum + item.count, 0);
+    const sortedGames = sortByCount(Array.from(gameMap.values()));
+    const games = sortedGames.slice(0, GROUPED_TOP_GAMES_LIMIT);
+    const total = sortedGames.reduce((sum, item) => sum + item.count, 0);
     buckets.push({
       key: bucket,
       label: bucket,
@@ -173,7 +177,7 @@ function buildYearLikeBuckets(
   }
 
   if (type === "decade") {
-    return buckets.sort((a, b) => a.key.localeCompare(b.key));
+    return buckets.sort((a, b) => Number.parseInt(b.key, 10) - Number.parseInt(a.key, 10));
   }
   return buckets.sort((a, b) => Number(b.key) - Number(a.key));
 }

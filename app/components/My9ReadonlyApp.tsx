@@ -156,6 +156,14 @@ export default function My9ReadonlyApp({
             构成我的九部{kindMeta.label}
           </h1>
           <p className="text-sm text-gray-500">{kindMeta.subtitle}</p>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-4 py-1.5 text-xs font-semibold text-sky-700 transition-colors hover:bg-sky-100"
+            onClick={() => router.push(`/trends?kind=${kind}`)}
+          >
+            大家的构成
+            <span className="text-red-500">(New!)</span>
+          </button>
         </header>
 
         {toast ? (

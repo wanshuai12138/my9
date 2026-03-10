@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,23 @@ import { SiBilibili } from "react-icons/si";
 interface SiteFooterProps {
   className?: string;
 }
+
+const donationAcknowledgements: Array<{
+  date: string;
+  amount: string;
+  message: string;
+}> = [
+  {
+    date: "2026-03-10",
+    amount: "79.2",
+    message: "",
+  },
+  {
+    date: "2026-03-10",
+    amount: "100",
+    message: "加油啊旻妈妈……",
+  },
+];
 
 function buildTallyEmbedUrl(value: string): string {
   try {
@@ -34,6 +52,31 @@ export function SiteFooter({ className }: SiteFooterProps) {
     process.env.NEXT_PUBLIC_FEEDBACK_TALLY_URL?.trim();
   const tallyEmbedUrl = tallyFormUrl ? buildTallyEmbedUrl(tallyFormUrl) : "";
   const wechatPayQrUrl = process.env.NEXT_PUBLIC_WECHAT_PAY_QR_URL?.trim();
+  const [collectedCount, setCollectedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCollectedCount() {
+      try {
+        const response = await fetch("/api/stats/share-count");
+        const json = (await response.json()) as
+          | { ok?: boolean; totalCount?: number }
+          | undefined;
+        if (!active) return;
+        if (!response.ok || !json?.ok) return;
+        if (typeof json.totalCount !== "number" || !Number.isFinite(json.totalCount)) return;
+        setCollectedCount(Math.max(0, Math.trunc(json.totalCount)));
+      } catch {
+        // keep placeholder when request fails
+      }
+    }
+
+    loadCollectedCount();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <footer
@@ -145,12 +188,16 @@ export function SiteFooter({ className }: SiteFooterProps) {
               支援开发者
             </button>
           </DialogTrigger>
-          <DialogContent className="w-[92vw] max-w-xl rounded-2xl p-5">
-            <DialogHeader>
+          <DialogContent className="w-[92vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl p-5">
+            <DialogHeader className="text-left">
               <DialogTitle>感谢支持</DialogTitle>
               <DialogDescription className="space-y-1.5 text-slate-600">
                 <span className="block">
-                  上线第一天本项目就已经生成了 31962 份大家的构成！可喜可贺（啪叽啪叽）
+                  本项目上线至今已经建构了{" "}
+                  <span className="font-semibold text-sky-600">
+                    {collectedCount === null ? "..." : collectedCount.toLocaleString("zh-CN")}
+                  </span>{" "}
+                  份大家的构成！可喜可贺（啪叽啪叽）
                 </span>
                 <span className="block">
                   但与此同时，意料之外的流行也让服务器开始不堪重负……
@@ -182,11 +229,46 @@ export function SiteFooter({ className }: SiteFooterProps) {
                 />
               </div>
             ) : (
-              <p className="mt-3 text-center text-sm text-slate-500">
+              <p className="mt-3 text-left text-sm text-slate-500">
                 暂未配置微信赞赏码。请在 <code>.env.local</code> 设置
                 <code> NEXT_PUBLIC_WECHAT_PAY_QR_URL</code>。
               </p>
             )}
+            <section className="mt-5 border-t border-slate-200 pt-4">
+              <h3 className="text-sm font-semibold text-slate-700">鸣谢名单</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                非常非常非常感谢以下各位的支持让站点能够运营下来……（日期从新到旧）
+              </p>
+              <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                <table className="w-full table-fixed text-left text-xs text-slate-600">
+                  <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500">
+                    <tr>
+                      <th className="w-28 px-3 py-2">打赏日期</th>
+                      <th className="w-24 px-3 py-2">打赏金额</th>
+                      <th className="px-3 py-2">附言</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donationAcknowledgements.map((item, index) => (
+                      <tr
+                        key={`${item.date}-${item.amount}-${index}`}
+                        className="border-t border-slate-100"
+                      >
+                        <td className="px-3 py-2 align-top whitespace-nowrap font-medium">
+                          {item.date}
+                        </td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap font-semibold">
+                          {item.amount}
+                        </td>
+                        <td className="px-3 py-2 align-top break-words">
+                          {item.message}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </DialogContent>
         </Dialog>
       </div>

@@ -16,10 +16,12 @@ import {
   TrendPeriod,
   TrendResponse,
   TrendView,
+  TrendYearPage,
 } from "@/lib/share/types";
 import { DEFAULT_SUBJECT_KIND, SubjectKind, parseSubjectKind } from "@/lib/subject-kind";
 
 const TRENDS_CACHE_PREFIX = "trends:cache:";
+const TRENDS_SAMPLE_CACHE_PREFIX = "trends:sample:";
 
 const SHARES_V1_TABLE = "my9_shares_v1";
 const SHARES_V2_TABLE = "my9_share_registry_v2";
@@ -28,6 +30,11 @@ const SUBJECT_DIM_TABLE = "my9_subject_dim_v1";
 const TREND_COUNT_ALL_TABLE = "my9_trend_subject_all_v2";
 const TREND_COUNT_DAY_TABLE = "my9_trend_subject_day_v2";
 const TRENDS_CACHE_TABLE = "my9_trends_cache_v1";
+const TRENDS_CACHE_VERSION = "v4";
+const TRENDS_SAMPLE_CACHE_VERSION = "v1";
+const SAMPLE_SUMMARY_CACHE_VIEW = "sample";
+const OVERALL_TREND_PAGE_SIZE = 20;
+const GROUPED_BUCKET_LIMIT = 20;
 const SHARES_V2_KIND_CREATED_IDX = `${SHARES_V2_TABLE}_kind_created_idx`;
 const SHARES_V2_TIER_CREATED_IDX = `${SHARES_V2_TABLE}_tier_created_idx`;
 const SHARE_ALIAS_TARGET_IDX = `${SHARE_ALIAS_TABLE}_target_idx`;
@@ -93,6 +100,7 @@ type MemoryStore = {
   shares: Map<string, StoredShareV1>;
   hashToShareId: Map<string, string>;
   trendCache: Map<string, { value: TrendResponse; expiresAt: number }>;
+  trendSampleCache: Map<string, { value: TrendSampleSummary; expiresAt: number }>;
 };
 
 type ShareV1Row = {
@@ -134,6 +142,7 @@ type TrendSubjectCountRow = {
   cover: string | null;
   release_year: number | null;
   genres: unknown;
+  bucket_total?: number | string | null;
 };
 
 type TrendSampleRow = {
@@ -142,9 +151,21 @@ type TrendSampleRow = {
   max_created: number | string | null;
 };
 
+type ShareCountRow = {
+  total_count: number | string;
+};
+
 type TrendCacheRow = {
   payload: unknown;
   expires_at: number | string;
+};
+
+type TrendSampleSummary = {
+  sampleCount: number;
+  range: {
+    from: number | null;
+    to: number | null;
+  };
 };
 
 function throwStorageError(context: string, cause?: unknown): never {
@@ -230,6 +251,21 @@ function parseTrendPayload(value: unknown): TrendResponse | null {
   };
 }
 
+function parseTrendSampleSummaryPayload(value: unknown): TrendSampleSummary | null {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Partial<TrendSampleSummary>;
+  if (!data.range || typeof data.range !== "object") {
+    return null;
+  }
+  return {
+    sampleCount: typeof data.sampleCount === "number" ? data.sampleCount : 0,
+    range: {
+      from: typeof data.range.from === "number" ? data.range.from : null,
+      to: typeof data.range.to === "number" ? data.range.to : null,
+    },
+  };
+}
+
 function getMemoryStore(): MemoryStore {
   const g = globalThis as typeof globalThis & {
     __MY9_SHARE_MEMORY__?: MemoryStore;
@@ -240,13 +276,27 @@ function getMemoryStore(): MemoryStore {
       shares: new Map<string, StoredShareV1>(),
       hashToShareId: new Map<string, string>(),
       trendCache: new Map<string, { value: TrendResponse; expiresAt: number }>(),
+      trendSampleCache: new Map<string, { value: TrendSampleSummary; expiresAt: number }>(),
     };
+  }
+  if (!g.__MY9_SHARE_MEMORY__.trendSampleCache) {
+    g.__MY9_SHARE_MEMORY__.trendSampleCache = new Map<string, { value: TrendSampleSummary; expiresAt: number }>();
   }
   return g.__MY9_SHARE_MEMORY__;
 }
 
-function trendCacheKey(period: TrendPeriod, view: TrendView, kind: SubjectKind) {
-  return `${TRENDS_CACHE_PREFIX}${period}:${view}:${kind}`;
+function trendCacheKey(
+  period: TrendPeriod,
+  view: TrendView,
+  kind: SubjectKind,
+  overallPage: number,
+  yearPage: TrendYearPage
+) {
+  return `${TRENDS_CACHE_PREFIX}${TRENDS_CACHE_VERSION}:${period}:${view}:${kind}:op${overallPage}:yp${yearPage}`;
+}
+
+function trendSampleCacheKey(period: TrendPeriod, kind: SubjectKind) {
+  return `${TRENDS_SAMPLE_CACHE_PREFIX}${TRENDS_SAMPLE_CACHE_VERSION}:${period}:${kind}`;
 }
 
 async function ensureSchema(): Promise<boolean> {
@@ -364,6 +414,16 @@ function getMemoryTrendCache(key: string): TrendResponse | null {
   if (!item) return null;
   if (Date.now() > item.expiresAt) {
     getMemoryStore().trendCache.delete(key);
+    return null;
+  }
+  return item.value;
+}
+
+function getMemoryTrendSampleSummaryCache(key: string): TrendSampleSummary | null {
+  const item = getMemoryStore().trendSampleCache.get(key);
+  if (!item) return null;
+  if (Date.now() > item.expiresAt) {
+    getMemoryStore().trendSampleCache.delete(key);
     return null;
   }
   return item.value;
@@ -525,6 +585,24 @@ async function tryListSharesFromV1(sql: SqlClient, from?: number): Promise<Store
     return rows.map((row) => rowToStoredShare(row));
   } catch {
     return [];
+  }
+}
+
+async function tryCountSharesFromV1(sql: SqlClient): Promise<number | null> {
+  if (!V1_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  try {
+    const rows = (await sql.query(
+      `
+      SELECT COUNT(*)::BIGINT AS total_count
+      FROM ${SHARES_V1_TABLE}
+      `
+    )) as ShareCountRow[];
+    return toNumber(rows[0]?.total_count, 0);
+  } catch {
+    return null;
   }
 }
 
@@ -928,14 +1006,64 @@ export async function listAllShares(): Promise<StoredShareV1[]> {
   return Array.from(getMemoryStore().shares.values()).map((item) => normalizeStoredShare(item));
 }
 
+export async function countAllShares(): Promise<number> {
+  const sql = getSqlClient();
+  if (!sql || !(await ensureSchema())) {
+    if (!MEMORY_FALLBACK_ENABLED) {
+      throwDatabaseNotReady("countAllShares failed");
+    }
+  } else {
+    try {
+      const rows = (await sql.query(
+        `
+        SELECT COUNT(*)::BIGINT AS total_count
+        FROM ${SHARES_V2_TABLE}
+        `
+      )) as ShareCountRow[];
+      const totalCount = toNumber(rows[0]?.total_count, 0);
+      if (totalCount > 0) {
+        return totalCount;
+      }
+
+      const legacyCount = await tryCountSharesFromV1(sql);
+      if (legacyCount !== null) {
+        return legacyCount;
+      }
+    } catch (error) {
+      if (!MEMORY_FALLBACK_ENABLED) {
+        throwStorageError("countAllShares failed: database read error", error);
+      }
+    }
+  }
+
+  if (!MEMORY_FALLBACK_ENABLED) {
+    return 0;
+  }
+
+  return getMemoryStore().shares.size;
+}
+
 function getPeriodStart(period: TrendPeriod, now = Date.now()): number {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const getUtcDayStart = (timestamp: number) => {
+    const date = new Date(timestamp);
+    date.setUTCHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+
   switch (period) {
+    case "today":
+      return getUtcDayStart(now);
+    case "24h":
+      return now - dayMs;
+    case "7d":
+      return now - 7 * dayMs;
     case "30d":
-      return now - 30 * 24 * 60 * 60 * 1000;
+      return now - 30 * dayMs;
     case "90d":
-      return now - 90 * 24 * 60 * 60 * 1000;
+      return now - 90 * dayMs;
     case "180d":
-      return now - 180 * 24 * 60 * 60 * 1000;
+      return now - 180 * dayMs;
     case "all":
     default:
       return 0;
@@ -1029,23 +1157,29 @@ function normalizeTrendGenres(value: unknown): string[] {
 }
 
 function buildTrendItemsFromCounts(view: TrendView, rows: TrendSubjectCountRow[]): TrendBucket[] {
+  const groupedTopGamesLimit = 5;
   switch (view) {
     case "genre": {
       const bucketMap = new Map<string, TrendGameItem[]>();
+      const bucketTotalMap = new Map<string, number>();
       for (const row of rows) {
         const game = createTrendGameItem(row);
+        const rowBucketTotal = toNumber(row.bucket_total, 0);
         const genres = normalizeTrendGenres(row.genres);
         const buckets = genres.length > 0 ? genres : ["未分类"];
         for (const bucketKey of buckets) {
           const list = bucketMap.get(bucketKey) || [];
           list.push(game);
           bucketMap.set(bucketKey, list);
+          if (rowBucketTotal > 0 && !bucketTotalMap.has(bucketKey)) {
+            bucketTotalMap.set(bucketKey, rowBucketTotal);
+          }
         }
       }
       const buckets: TrendBucket[] = [];
       for (const [bucket, games] of Array.from(bucketMap.entries())) {
-        const total = games.reduce((sum, item) => sum + item.count, 0);
-        const sortedGames = sortByCount(games).slice(0, 10);
+        const sortedGames = sortByCount(games).slice(0, groupedTopGamesLimit);
+        const total = bucketTotalMap.get(bucket) ?? games.reduce((sum, item) => sum + item.count, 0);
         buckets.push({
           key: bucket,
           label: bucket,
@@ -1053,11 +1187,12 @@ function buildTrendItemsFromCounts(view: TrendView, rows: TrendSubjectCountRow[]
           games: sortedGames,
         });
       }
-      return sortByCount(buckets).slice(0, 30);
+      return sortByCount(buckets).slice(0, GROUPED_BUCKET_LIMIT);
     }
     case "decade":
     case "year": {
       const bucketMap = new Map<string, TrendGameItem[]>();
+      const bucketTotalMap = new Map<string, number>();
       for (const row of rows) {
         const releaseYear =
           typeof row.release_year === "number" && Number.isFinite(row.release_year)
@@ -1068,24 +1203,29 @@ function buildTrendItemsFromCounts(view: TrendView, rows: TrendSubjectCountRow[]
         const list = bucketMap.get(bucketKey) || [];
         list.push(createTrendGameItem(row));
         bucketMap.set(bucketKey, list);
+        const rowBucketTotal = toNumber(row.bucket_total, 0);
+        if (rowBucketTotal > 0 && !bucketTotalMap.has(bucketKey)) {
+          bucketTotalMap.set(bucketKey, rowBucketTotal);
+        }
       }
       const buckets: TrendBucket[] = [];
       for (const [bucket, games] of Array.from(bucketMap.entries())) {
-        const sortedGames = sortByCount(games).slice(0, 5);
+        const sortedGames = sortByCount(games).slice(0, groupedTopGamesLimit);
+        const total = bucketTotalMap.get(bucket) ?? games.reduce((sum, item) => sum + item.count, 0);
         buckets.push({
           key: bucket,
           label: bucket,
-          count: sortedGames.reduce((sum, item) => sum + item.count, 0),
+          count: total,
           games: sortedGames,
         });
       }
       return view === "decade"
-        ? buckets.sort((a, b) => a.key.localeCompare(b.key))
+        ? buckets.sort((a, b) => Number.parseInt(b.key, 10) - Number.parseInt(a.key, 10))
         : buckets.sort((a, b) => Number(b.key) - Number(a.key));
     }
     case "overall":
     default: {
-      const sorted = sortByCount(rows.map((row) => createTrendGameItem(row))).slice(0, 30);
+      const sorted = sortByCount(rows.map((row) => createTrendGameItem(row))).slice(0, OVERALL_TREND_PAGE_SIZE);
       return sorted.map((game, index) => ({
         key: String(index + 1),
         label: `#${index + 1}`,
@@ -1100,8 +1240,10 @@ export async function getAggregatedTrendResponse(params: {
   period: TrendPeriod;
   view: TrendView;
   kind: SubjectKind;
+  overallPage: number;
+  yearPage: TrendYearPage;
 }): Promise<TrendResponse | null> {
-  const { period, view, kind } = params;
+  const { period, view, kind, overallPage, yearPage } = params;
   const sql = getSqlClient();
   if (!sql || !(await ensureSchema())) {
     return null;
@@ -1109,6 +1251,8 @@ export async function getAggregatedTrendResponse(params: {
 
   const fromTimestamp = getPeriodStart(period);
   const fromDayKey = fromTimestamp > 0 ? toUtcDayKey(fromTimestamp) : null;
+  const overallOffset = Math.max(0, (overallPage - 1) * OVERALL_TREND_PAGE_SIZE);
+  const yearFilterCondition = yearPage === "legacy" ? "d.release_year <= 2009" : "d.release_year >= 2010";
 
   const sampleRows = (await sql.query(
     fromTimestamp > 0
@@ -1148,34 +1292,368 @@ export async function getAggregatedTrendResponse(params: {
     };
   }
 
-  const countRows =
-    period === "all"
-      ? ((await sql.query(
-          `
-        SELECT c.subject_id, c.count, d.name, d.localized_name, d.cover, d.release_year, d.genres
+  let countRows: TrendSubjectCountRow[];
+
+  if (period === "all") {
+    if (view === "overall") {
+      countRows = (await sql.query(
+        `
+        SELECT c.subject_id, c.count, d.name, d.localized_name, d.cover, d.release_year, NULL::jsonb AS genres
         FROM ${TREND_COUNT_ALL_TABLE} c
-        JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id
-        WHERE d.kind = $1
+        JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+        ORDER BY c.count DESC
+        LIMIT ${OVERALL_TREND_PAGE_SIZE}
+        OFFSET $2
         `,
-          [kind]
-        )) as TrendSubjectCountRow[])
-      : ((await sql.query(
-          `
+        [kind, overallOffset]
+      )) as TrendSubjectCountRow[];
+    } else if (view === "genre") {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT c.subject_id, c.count, d.name, d.localized_name, d.cover, d.release_year, d.genres
+          FROM ${TREND_COUNT_ALL_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+        ),
+        expanded AS (
+          SELECT
+            sc.subject_id,
+            sc.count,
+            sc.name,
+            sc.localized_name,
+            sc.cover,
+            sc.release_year,
+            COALESCE(NULLIF(BTRIM(g.genre), ''), '未分类') AS genre
+          FROM subject_counts sc
+          LEFT JOIN LATERAL (
+            SELECT jsonb_array_elements_text(
+              CASE
+                WHEN sc.genres IS NULL THEN '[]'::jsonb
+                WHEN jsonb_typeof(sc.genres) = 'array' THEN sc.genres
+                ELSE '[]'::jsonb
+              END
+            ) AS genre
+          ) g ON true
+        ),
+        genre_totals AS (
+          SELECT
+            genre,
+            SUM(count)::BIGINT AS total_count
+          FROM expanded
+          GROUP BY genre
+          ORDER BY total_count DESC, genre ASC
+          LIMIT ${GROUPED_BUCKET_LIMIT}
+        ),
+        ranked AS (
+          SELECT
+            e.subject_id,
+            e.count,
+            e.name,
+            e.localized_name,
+            e.cover,
+            e.release_year,
+            e.genre,
+            gt.total_count,
+            ROW_NUMBER() OVER (
+              PARTITION BY e.genre
+              ORDER BY e.count DESC, e.subject_id ASC
+            ) AS genre_rank
+          FROM expanded e
+          JOIN genre_totals gt ON gt.genre = e.genre
+        )
         SELECT
-          c.subject_id,
-          SUM(c.count)::BIGINT AS count,
-          d.name,
-          d.localized_name,
-          d.cover,
-          d.release_year,
-          d.genres
-        FROM ${TREND_COUNT_DAY_TABLE} c
-        JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id
-        WHERE d.kind = $1 AND c.day_key >= $2
-        GROUP BY c.subject_id, d.name, d.localized_name, d.cover, d.release_year, d.genres
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          jsonb_build_array(r.genre) AS genres,
+          r.total_count AS bucket_total
+        FROM ranked r
+        WHERE r.genre_rank <= 5
+        ORDER BY r.total_count DESC, r.genre ASC, r.count DESC, r.subject_id ASC
         `,
-          [kind, fromDayKey]
-        )) as TrendSubjectCountRow[]);
+        [kind]
+      )) as TrendSubjectCountRow[];
+    } else if (view === "year") {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT c.subject_id, c.count
+          FROM ${TREND_COUNT_ALL_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE d.release_year IS NOT NULL
+            AND ${yearFilterCondition}
+        ),
+        ranked AS (
+          SELECT
+            d.release_year AS bucket_year,
+            sc.subject_id,
+            sc.count,
+            d.name,
+            d.localized_name,
+            d.cover,
+            d.release_year,
+            SUM(sc.count) OVER (PARTITION BY d.release_year) AS bucket_total,
+            ROW_NUMBER() OVER (
+              PARTITION BY d.release_year
+              ORDER BY sc.count DESC, sc.subject_id ASC
+            ) AS bucket_rank
+          FROM subject_counts sc
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = sc.subject_id AND d.kind = $1
+        )
+        SELECT
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          NULL::jsonb AS genres,
+          r.bucket_total
+        FROM ranked r
+        WHERE r.bucket_rank <= 5
+        ORDER BY r.bucket_year DESC, r.count DESC, r.subject_id ASC
+        `,
+        [kind]
+      )) as TrendSubjectCountRow[];
+    } else {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT c.subject_id, c.count
+          FROM ${TREND_COUNT_ALL_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE d.release_year IS NOT NULL
+        ),
+        ranked AS (
+          SELECT
+            ((d.release_year / 10) * 10) AS bucket_decade,
+            sc.subject_id,
+            sc.count,
+            d.name,
+            d.localized_name,
+            d.cover,
+            d.release_year,
+            SUM(sc.count) OVER (PARTITION BY ((d.release_year / 10) * 10)) AS bucket_total,
+            ROW_NUMBER() OVER (
+              PARTITION BY ((d.release_year / 10) * 10)
+              ORDER BY sc.count DESC, sc.subject_id ASC
+            ) AS bucket_rank
+          FROM subject_counts sc
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = sc.subject_id AND d.kind = $1
+        )
+        SELECT
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          NULL::jsonb AS genres,
+          r.bucket_total
+        FROM ranked r
+        WHERE r.bucket_rank <= 5
+        ORDER BY r.bucket_decade DESC, r.count DESC, r.subject_id ASC
+        `,
+        [kind]
+      )) as TrendSubjectCountRow[];
+    }
+  } else {
+    if (view === "overall") {
+      countRows = (await sql.query(
+        `
+        WITH top_counts AS (
+          SELECT
+            c.subject_id,
+            SUM(c.count)::BIGINT AS count
+          FROM ${TREND_COUNT_DAY_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE c.day_key >= $2
+          GROUP BY c.subject_id
+          ORDER BY SUM(c.count) DESC
+          LIMIT ${OVERALL_TREND_PAGE_SIZE}
+          OFFSET $3
+        )
+        SELECT tc.subject_id, tc.count, d.name, d.localized_name, d.cover, d.release_year, NULL::jsonb AS genres
+        FROM top_counts tc
+        JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = tc.subject_id AND d.kind = $1
+        ORDER BY tc.count DESC
+        `,
+        [kind, fromDayKey, overallOffset]
+      )) as TrendSubjectCountRow[];
+    } else if (view === "genre") {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT
+            c.subject_id,
+            SUM(c.count)::BIGINT AS count,
+            d.name,
+            d.localized_name,
+            d.cover,
+            d.release_year,
+            d.genres
+          FROM ${TREND_COUNT_DAY_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE c.day_key >= $2
+          GROUP BY c.subject_id, d.name, d.localized_name, d.cover, d.release_year, d.genres
+        ),
+        expanded AS (
+          SELECT
+            sc.subject_id,
+            sc.count,
+            sc.name,
+            sc.localized_name,
+            sc.cover,
+            sc.release_year,
+            COALESCE(NULLIF(BTRIM(g.genre), ''), '未分类') AS genre
+          FROM subject_counts sc
+          LEFT JOIN LATERAL (
+            SELECT jsonb_array_elements_text(
+              CASE
+                WHEN sc.genres IS NULL THEN '[]'::jsonb
+                WHEN jsonb_typeof(sc.genres) = 'array' THEN sc.genres
+                ELSE '[]'::jsonb
+              END
+            ) AS genre
+          ) g ON true
+        ),
+        genre_totals AS (
+          SELECT
+            genre,
+            SUM(count)::BIGINT AS total_count
+          FROM expanded
+          GROUP BY genre
+          ORDER BY total_count DESC, genre ASC
+          LIMIT ${GROUPED_BUCKET_LIMIT}
+        ),
+        ranked AS (
+          SELECT
+            e.subject_id,
+            e.count,
+            e.name,
+            e.localized_name,
+            e.cover,
+            e.release_year,
+            e.genre,
+            gt.total_count,
+            ROW_NUMBER() OVER (
+              PARTITION BY e.genre
+              ORDER BY e.count DESC, e.subject_id ASC
+            ) AS genre_rank
+          FROM expanded e
+          JOIN genre_totals gt ON gt.genre = e.genre
+        )
+        SELECT
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          jsonb_build_array(r.genre) AS genres,
+          r.total_count AS bucket_total
+        FROM ranked r
+        WHERE r.genre_rank <= 5
+        ORDER BY r.total_count DESC, r.genre ASC, r.count DESC, r.subject_id ASC
+        `,
+        [kind, fromDayKey]
+      )) as TrendSubjectCountRow[];
+    } else if (view === "year") {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT
+            c.subject_id,
+            SUM(c.count)::BIGINT AS count
+          FROM ${TREND_COUNT_DAY_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE c.day_key >= $2
+            AND d.release_year IS NOT NULL
+            AND ${yearFilterCondition}
+          GROUP BY c.subject_id
+        ),
+        ranked AS (
+          SELECT
+            d.release_year AS bucket_year,
+            sc.subject_id,
+            sc.count,
+            d.name,
+            d.localized_name,
+            d.cover,
+            d.release_year,
+            SUM(sc.count) OVER (PARTITION BY d.release_year) AS bucket_total,
+            ROW_NUMBER() OVER (
+              PARTITION BY d.release_year
+              ORDER BY sc.count DESC, sc.subject_id ASC
+            ) AS bucket_rank
+          FROM subject_counts sc
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = sc.subject_id AND d.kind = $1
+        )
+        SELECT
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          NULL::jsonb AS genres,
+          r.bucket_total
+        FROM ranked r
+        WHERE r.bucket_rank <= 5
+        ORDER BY r.bucket_year DESC, r.count DESC, r.subject_id ASC
+        `,
+        [kind, fromDayKey]
+      )) as TrendSubjectCountRow[];
+    } else {
+      countRows = (await sql.query(
+        `
+        WITH subject_counts AS (
+          SELECT
+            c.subject_id,
+            SUM(c.count)::BIGINT AS count
+          FROM ${TREND_COUNT_DAY_TABLE} c
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = c.subject_id AND d.kind = $1
+          WHERE c.day_key >= $2
+            AND d.release_year IS NOT NULL
+          GROUP BY c.subject_id
+        ),
+        ranked AS (
+          SELECT
+            ((d.release_year / 10) * 10) AS bucket_decade,
+            sc.subject_id,
+            sc.count,
+            d.name,
+            d.localized_name,
+            d.cover,
+            d.release_year,
+            SUM(sc.count) OVER (PARTITION BY ((d.release_year / 10) * 10)) AS bucket_total,
+            ROW_NUMBER() OVER (
+              PARTITION BY ((d.release_year / 10) * 10)
+              ORDER BY sc.count DESC, sc.subject_id ASC
+            ) AS bucket_rank
+          FROM subject_counts sc
+          JOIN ${SUBJECT_DIM_TABLE} d ON d.subject_id = sc.subject_id AND d.kind = $1
+        )
+        SELECT
+          r.subject_id,
+          r.count,
+          r.name,
+          r.localized_name,
+          r.cover,
+          r.release_year,
+          NULL::jsonb AS genres,
+          r.bucket_total
+        FROM ranked r
+        WHERE r.bucket_rank <= 5
+        ORDER BY r.bucket_decade DESC, r.count DESC, r.subject_id ASC
+        `,
+        [kind, fromDayKey]
+      )) as TrendSubjectCountRow[];
+    }
+  }
 
   return {
     period,
@@ -1187,12 +1665,169 @@ export async function getAggregatedTrendResponse(params: {
   };
 }
 
+export async function getTrendSampleSummary(period: TrendPeriod, kind: SubjectKind): Promise<TrendSampleSummary | null> {
+  const sql = getSqlClient();
+  if (!sql || !(await ensureSchema())) {
+    return null;
+  }
+
+  const fromTimestamp = getPeriodStart(period);
+  const sampleRows = (await sql.query(
+    fromTimestamp > 0
+      ? `
+      SELECT
+        COUNT(*)::BIGINT AS sample_count,
+        MIN(created_at) AS min_created,
+        MAX(created_at) AS max_created
+      FROM ${SHARES_V2_TABLE}
+      WHERE kind = $1
+        AND created_at >= $2
+      `
+      : `
+      SELECT
+        COUNT(*)::BIGINT AS sample_count,
+        MIN(created_at) AS min_created,
+        MAX(created_at) AS max_created
+      FROM ${SHARES_V2_TABLE}
+      WHERE kind = $1
+      `,
+    fromTimestamp > 0 ? [kind, fromTimestamp] : [kind]
+  )) as TrendSampleRow[];
+
+  const sample = sampleRows[0];
+  const sampleCount = toNumber(sample?.sample_count, 0);
+  const rangeFrom = sample?.min_created === null ? null : toNumber(sample?.min_created, 0) || null;
+  const rangeTo = sample?.max_created === null ? null : toNumber(sample?.max_created, 0) || null;
+
+  return {
+    sampleCount,
+    range: { from: rangeFrom, to: rangeTo },
+  };
+}
+
+export async function getTrendSampleSummaryCache(
+  period: TrendPeriod,
+  kind: SubjectKind
+): Promise<TrendSampleSummary | null> {
+  const key = trendSampleCacheKey(period, kind);
+  if (MEMORY_FALLBACK_ENABLED) {
+    const fromMemory = getMemoryTrendSampleSummaryCache(key);
+    if (fromMemory) return fromMemory;
+  }
+
+  const sql = getSqlClient();
+  if (!sql || !(await ensureSchema())) {
+    if (!MEMORY_FALLBACK_ENABLED) {
+      throwDatabaseNotReady("getTrendSampleSummaryCache failed");
+    }
+  } else {
+    try {
+      const rows = (await sql`
+        SELECT payload, expires_at
+        FROM ${sql.unsafe(TRENDS_CACHE_TABLE)}
+        WHERE cache_key = ${key}
+        LIMIT 1
+      `) as TrendCacheRow[];
+
+      if (rows.length > 0) {
+        const row = rows[0];
+        const expiresAt = toNumber(row.expires_at, 0);
+        if (Date.now() > expiresAt) {
+          await sql`
+            DELETE FROM ${sql.unsafe(TRENDS_CACHE_TABLE)}
+            WHERE cache_key = ${key}
+          `;
+          return null;
+        }
+
+        const payload = parseTrendSampleSummaryPayload(row.payload);
+        if (payload) {
+          if (MEMORY_FALLBACK_ENABLED) {
+            getMemoryStore().trendSampleCache.set(key, {
+              value: payload,
+              expiresAt,
+            });
+          }
+          return payload;
+        }
+      }
+    } catch (error) {
+      if (!MEMORY_FALLBACK_ENABLED) {
+        throwStorageError("getTrendSampleSummaryCache failed: database read error", error);
+      }
+    }
+  }
+
+  return null;
+}
+
+export async function setTrendSampleSummaryCache(
+  period: TrendPeriod,
+  kind: SubjectKind,
+  value: TrendSampleSummary,
+  ttlSeconds = 3600
+): Promise<void> {
+  const key = trendSampleCacheKey(period, kind);
+  const expiresAt = Date.now() + ttlSeconds * 1000;
+
+  if (MEMORY_FALLBACK_ENABLED) {
+    getMemoryStore().trendSampleCache.set(key, {
+      value,
+      expiresAt,
+    });
+  }
+
+  const sql = getSqlClient();
+  if (!sql || !(await ensureSchema())) {
+    if (!MEMORY_FALLBACK_ENABLED) {
+      throwDatabaseNotReady("setTrendSampleSummaryCache failed");
+    }
+    return;
+  }
+
+  try {
+    await sql`
+      INSERT INTO ${sql.unsafe(TRENDS_CACHE_TABLE)} (
+        cache_key,
+        period,
+        view,
+        kind,
+        payload,
+        expires_at,
+        updated_at
+      )
+      VALUES (
+        ${key},
+        ${period},
+        ${SAMPLE_SUMMARY_CACHE_VIEW},
+        ${kind},
+        ${JSON.stringify(value)}::jsonb,
+        ${expiresAt},
+        ${Date.now()}
+      )
+      ON CONFLICT (cache_key) DO UPDATE SET
+        period = EXCLUDED.period,
+        view = EXCLUDED.view,
+        kind = EXCLUDED.kind,
+        payload = EXCLUDED.payload,
+        expires_at = EXCLUDED.expires_at,
+        updated_at = EXCLUDED.updated_at
+    `;
+  } catch (error) {
+    if (!MEMORY_FALLBACK_ENABLED) {
+      throwStorageError("setTrendSampleSummaryCache failed: database write error", error);
+    }
+  }
+}
+
 export async function getTrendsCache(
   period: TrendPeriod,
   view: TrendView,
-  kind: SubjectKind
+  kind: SubjectKind,
+  overallPage: number,
+  yearPage: TrendYearPage
 ): Promise<TrendResponse | null> {
-  const key = trendCacheKey(period, view, kind);
+  const key = trendCacheKey(period, view, kind, overallPage, yearPage);
   if (MEMORY_FALLBACK_ENABLED) {
     const fromMemory = getMemoryTrendCache(key);
     if (fromMemory) return fromMemory;
@@ -1248,10 +1883,12 @@ export async function setTrendsCache(
   period: TrendPeriod,
   view: TrendView,
   kind: SubjectKind,
+  overallPage: number,
+  yearPage: TrendYearPage,
   value: TrendResponse,
-  ttlSeconds = 600
+  ttlSeconds = 3600
 ): Promise<void> {
-  const key = trendCacheKey(period, view, kind);
+  const key = trendCacheKey(period, view, kind, overallPage, yearPage);
   const expiresAt = Date.now() + ttlSeconds * 1000;
   if (MEMORY_FALLBACK_ENABLED) {
     getMemoryStore().trendCache.set(key, {

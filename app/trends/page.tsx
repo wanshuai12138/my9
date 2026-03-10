@@ -1,21 +1,48 @@
 import TrendsClientPage from "@/app/components/TrendsClientPage";
 import type { TrendResponse } from "@/lib/share/types";
 import {
-  DEFAULT_TREND_KIND,
-  DEFAULT_TREND_PERIOD,
-  DEFAULT_TREND_VIEW,
+  parseTrendKind,
+  parseTrendOverallPage,
+  parseTrendPeriod,
+  parseTrendView,
+  parseTrendYearPage,
   resolveTrendResponse,
 } from "@/lib/share/trends-query";
 
-export default async function TrendsPage() {
+function resolveSearchParam(
+  value: string | string[] | undefined
+): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+export default async function TrendsPage({
+  searchParams,
+}: {
+  searchParams?: {
+    kind?: string | string[];
+    period?: string | string[];
+    view?: string | string[];
+    overallPage?: string | string[];
+    yearPage?: string | string[];
+  };
+}) {
+  const initialKind = parseTrendKind(resolveSearchParam(searchParams?.kind));
+  const initialPeriod = parseTrendPeriod(resolveSearchParam(searchParams?.period));
+  const initialView = parseTrendView(resolveSearchParam(searchParams?.view));
+  const initialOverallPage = parseTrendOverallPage(resolveSearchParam(searchParams?.overallPage));
+  const initialYearPage = parseTrendYearPage(resolveSearchParam(searchParams?.yearPage));
+
   let initialData: TrendResponse | null = null;
   let initialError = "";
 
   try {
     initialData = await resolveTrendResponse({
-      kind: DEFAULT_TREND_KIND,
-      period: DEFAULT_TREND_PERIOD,
-      view: DEFAULT_TREND_VIEW,
+      kind: initialKind,
+      period: initialPeriod,
+      view: initialView,
+      overallPage: initialOverallPage,
+      yearPage: initialYearPage,
     });
   } catch {
     initialError = "趋势数据加载失败";
@@ -23,9 +50,11 @@ export default async function TrendsPage() {
 
   return (
     <TrendsClientPage
-      initialKind={DEFAULT_TREND_KIND}
-      initialPeriod={DEFAULT_TREND_PERIOD}
-      initialView={DEFAULT_TREND_VIEW}
+      initialKind={initialKind}
+      initialPeriod={initialPeriod}
+      initialView={initialView}
+      initialOverallPage={initialOverallPage}
+      initialYearPage={initialYearPage}
       initialData={initialData}
       initialError={initialError}
     />

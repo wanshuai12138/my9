@@ -42,8 +42,9 @@ export interface StoredShareV1 {
   lastViewedAt: number;
 }
 
-export type TrendPeriod = "30d" | "90d" | "180d" | "all";
+export type TrendPeriod = "today" | "24h" | "7d" | "30d" | "90d" | "180d" | "all";
 export type TrendView = "overall" | "genre" | "decade" | "year";
+export type TrendYearPage = "recent" | "legacy";
 
 export interface TrendGameItem {
   id: string;

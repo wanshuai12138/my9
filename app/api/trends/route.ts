@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
-import { parseTrendKind, parseTrendPeriod, parseTrendView, resolveTrendResponse } from "@/lib/share/trends-query";
-const TRENDS_CDN_TTL_SECONDS = 600;
-const TRENDS_STALE_TTL_SECONDS = 86400;
-const TRENDS_CACHE_CONTROL_VALUE = `public, max-age=0, s-maxage=${TRENDS_CDN_TTL_SECONDS}, stale-while-revalidate=${TRENDS_STALE_TTL_SECONDS}`;
+import {
+  parseTrendKind,
+  parseTrendOverallPage,
+  parseTrendPeriod,
+  parseTrendView,
+  parseTrendYearPage,
+  resolveTrendResponse,
+} from "@/lib/share/trends-query";
+const TRENDS_CDN_TTL_SECONDS = 3600;
+const TRENDS_CACHE_CONTROL_VALUE = `public, max-age=0, s-maxage=${TRENDS_CDN_TTL_SECONDS}`;
 
 function createTrendsCacheHeaders() {
   return {
@@ -17,10 +23,14 @@ export async function GET(request: Request) {
   const period = parseTrendPeriod(searchParams.get("period"));
   const view = parseTrendView(searchParams.get("view"));
   const kind = parseTrendKind(searchParams.get("kind"));
+  const overallPage = parseTrendOverallPage(searchParams.get("overallPage"));
+  const yearPage = parseTrendYearPage(searchParams.get("yearPage"));
   const response = await resolveTrendResponse({
     period,
     view,
     kind,
+    overallPage,
+    yearPage,
   });
 
   return NextResponse.json({
