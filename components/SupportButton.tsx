@@ -41,7 +41,7 @@ export function SupportButton() {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="bg-transparent p-0 text-red-600 transition-colors hover:text-slate-800 hover:underline"
+          className="bg-transparent p-0 text-red-600 text-sm transition-colors hover:text-slate-800 hover:underline"
         >
           支援开发者
         </button>
