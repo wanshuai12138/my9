@@ -7,6 +7,7 @@ import { ArrowUp, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubjectKindIcon } from "@/components/subject/SubjectKindIcon";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { SupportButton } from "@/components/SupportButton";
 import { SubjectKind, SUBJECT_KIND_ORDER, getSubjectKindMeta } from "@/lib/subject-kind";
 import type { TrendGameItem, TrendResponse, TrendPeriod, TrendView, TrendYearPage } from "@/lib/share/types";
 import { cn } from "@/lib/utils";
@@ -409,6 +410,7 @@ export default function TrendsClientPage({
               <p className="text-xs text-yellow-500">
                 作品分类和最近24小时的统计问题已修复！每小时更新。
               </p>
+              <SupportButton/>
               <p className="text-xs text-slate-500">
                 当前类别样本数：{data?.sampleCount ?? "-"}
                 {/* 集计区间：{formatDateTime(data?.range.from ?? null)} ～ {formatDateTime(data?.range.to ?? null)} */}
