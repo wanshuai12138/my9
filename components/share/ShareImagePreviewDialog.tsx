@@ -53,6 +53,16 @@ export function ShareImagePreviewDialog({
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewError, setPreviewError] = useState("");
   const requestIdRef = useRef(0);
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -63,6 +73,7 @@ export function ShareImagePreviewDialog({
       setPreviewError("");
       setPreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
+        previewUrlRef.current = null;
         return null;
       });
       return;
@@ -93,6 +104,7 @@ export function ShareImagePreviewDialog({
         setPreviewBlob(blob);
         setPreviewUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
+          previewUrlRef.current = nextUrl;
           return nextUrl;
         });
       } catch {
@@ -101,6 +113,7 @@ export function ShareImagePreviewDialog({
         setPreviewError("图片生成失败，请稍后重试");
         setPreviewUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
+          previewUrlRef.current = null;
           return null;
         });
       } finally {
@@ -141,9 +154,9 @@ export function ShareImagePreviewDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+          <div className="overflow-hidden rounded-xl border border-border bg-muted">
             {loading ? (
-              <div className="flex h-[46vh] min-h-[300px] items-center justify-center text-sm text-slate-500">
+              <div className="flex h-[46vh] min-h-[300px] items-center justify-center text-sm text-muted-foreground">
                 正在生成图片...
               </div>
             ) : previewUrl ? (
@@ -164,9 +177,9 @@ export function ShareImagePreviewDialog({
             )}
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-3 py-2.5">
             <div className="pr-3">
-              <p className="text-sm font-semibold text-slate-800">附带分享链接</p>
+              <p className="text-sm font-semibold text-foreground">附带分享链接</p>
             </div>
             <button
               type="button"
@@ -176,7 +189,7 @@ export function ShareImagePreviewDialog({
               onClick={() => setWithQr((value) => !value)}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                withQr ? "bg-sky-600" : "bg-slate-300"
+                withQr ? "bg-sky-600" : "bg-muted-foreground/40"
               )}
             >
               <span
@@ -188,9 +201,9 @@ export function ShareImagePreviewDialog({
             </button>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-3 py-2.5">
             <div className="pr-3">
-              <p className="text-sm font-semibold text-slate-800">显示名称</p>
+              <p className="text-sm font-semibold text-foreground">显示名称</p>
             </div>
             <button
               type="button"
@@ -200,7 +213,7 @@ export function ShareImagePreviewDialog({
               onClick={() => setShowNames((value) => !value)}
               className={cn(
                 "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                showNames ? "bg-sky-600" : "bg-slate-300"
+                showNames ? "bg-sky-600" : "bg-muted-foreground/40"
               )}
             >
               <span
@@ -214,12 +227,12 @@ export function ShareImagePreviewDialog({
         </div>
 
         <DialogFooter className="sm:justify-between">
-          <p className="text-xs text-slate-500">如果下载失败，可以尝试长按预览图保存。</p>
+          <p className="text-xs text-muted-foreground">如果下载失败，可以尝试长按预览图保存。</p>
           <Button
             type="button"
             onClick={handleDownload}
             disabled={loading}
-            className="bg-gray-900 text-white hover:bg-gray-800"
+            className="bg-foreground text-background hover:opacity-90"
           >
             保存图片
           </Button>

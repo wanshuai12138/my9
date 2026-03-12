@@ -11,7 +11,7 @@ import { DEFAULT_SUBJECT_KIND, SubjectKind, parseSubjectKind } from "@/lib/subje
 
 export const VALID_TREND_PERIODS: TrendPeriod[] = ["today", "24h", "7d", "30d", "90d", "180d", "all"];
 export const VALID_TREND_VIEWS: TrendView[] = ["overall", "genre", "decade", "year"];
-export const DEFAULT_TREND_PERIOD: TrendPeriod = "today";
+export const DEFAULT_TREND_PERIOD: TrendPeriod = "24h";
 export const DEFAULT_TREND_VIEW: TrendView = "overall";
 export const DEFAULT_TREND_KIND: SubjectKind = DEFAULT_SUBJECT_KIND;
 export const DEFAULT_TREND_OVERALL_PAGE = 1;
@@ -37,10 +37,22 @@ function applySampleSummary(response: TrendResponse, summary: TrendSampleSummary
   if (!summary) {
     return response;
   }
+
+  const sampleCount = Math.max(response.sampleCount, summary.sampleCount);
+  const rangeFromCandidates = [response.range.from, summary.range.from].filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value)
+  );
+  const rangeToCandidates = [response.range.to, summary.range.to].filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value)
+  );
+
   return {
     ...response,
-    sampleCount: summary.sampleCount,
-    range: summary.range,
+    sampleCount,
+    range: {
+      from: rangeFromCandidates.length > 0 ? Math.min(...rangeFromCandidates) : null,
+      to: rangeToCandidates.length > 0 ? Math.max(...rangeToCandidates) : null,
+    },
   };
 }
 
@@ -49,6 +61,15 @@ function toSampleSummary(response: TrendResponse): TrendSampleSummary {
     sampleCount: response.sampleCount,
     range: response.range,
   };
+}
+
+function isSameSampleSummary(a: TrendSampleSummary | null, b: TrendSampleSummary | null): boolean {
+  if (!a || !b) return false;
+  return (
+    a.sampleCount === b.sampleCount &&
+    a.range.from === b.range.from &&
+    a.range.to === b.range.to
+  );
 }
 
 function suppressSmallSamples(response: TrendResponse): TrendResponse {
@@ -192,13 +213,36 @@ async function resolveTrendResponseInternal(params: ResolveTrendParams): Promise
 
   const cached = await safeGetTrendsCache(params, false);
   if (cached) {
-    const mergedSampleCount = sampleSummary?.sampleCount ?? cached.sampleCount;
+    let mergedSampleCount = sampleSummary ? Math.max(sampleSummary.sampleCount, cached.sampleCount) : cached.sampleCount;
+    let shouldBypassCached = false;
+
+    // `today` is vulnerable to low-sample seed cache after midnight.
+    // If cached payload is empty and sample < 30, probe live summary once.
+    if (period === "today" && cached.items.length === 0 && mergedSampleCount < 30) {
+      const liveSummary = await safeGetTrendSampleSummary(period, kind);
+      if (liveSummary) {
+        mergedSampleCount = Math.max(mergedSampleCount, liveSummary.sampleCount);
+        if (!isSameSampleSummary(sampleSummary, liveSummary)) {
+          sampleSummary = liveSummary;
+          await safeSetTrendSampleSummaryCache(period, kind, liveSummary);
+        } else {
+          sampleSummary = liveSummary;
+        }
+        if (liveSummary.sampleCount >= 30) {
+          shouldBypassCached = true;
+        }
+      }
+    }
+
     const cachedLooksStaleSuppressed = cached.items.length === 0 && mergedSampleCount >= 30;
 
-    if (!cachedLooksStaleSuppressed) {
+    if (!cachedLooksStaleSuppressed && !shouldBypassCached) {
       if (!sampleSummary) {
-        sampleSummary = toSampleSummary(cached);
-        await safeSetTrendSampleSummaryCache(period, kind, sampleSummary);
+        const cachedLooksSuppressedSmallSample = cached.items.length === 0 && cached.sampleCount > 0 && cached.sampleCount < 30;
+        if (!cachedLooksSuppressedSmallSample) {
+          sampleSummary = toSampleSummary(cached);
+          await safeSetTrendSampleSummaryCache(period, kind, sampleSummary);
+        }
       }
       return suppressSmallSamples(applySampleSummary(cached, sampleSummary));
     }
@@ -222,12 +266,9 @@ async function resolveTrendResponseInternal(params: ResolveTrendParams): Promise
     });
 
     if (aggregated) {
-      if (!sampleSummary) {
-        sampleSummary = toSampleSummary(aggregated);
-        await safeSetTrendSampleSummaryCache(period, kind, sampleSummary);
-      }
-
-      const normalized = suppressSmallSamples(applySampleSummary(aggregated, sampleSummary));
+      sampleSummary = toSampleSummary(aggregated);
+      await safeSetTrendSampleSummaryCache(period, kind, sampleSummary);
+      const normalized = suppressSmallSamples(aggregated);
       await safeSetTrendsCache(params, normalized);
       return normalized;
     }

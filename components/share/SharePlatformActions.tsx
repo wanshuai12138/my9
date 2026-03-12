@@ -1,11 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ShareImagePreviewDialog } from "@/components/share/ShareImagePreviewDialog";
-import { ShareLinkDialog } from "@/components/share/ShareLinkDialog";
 import { SubjectKind, getSubjectKindMeta } from "@/lib/subject-kind";
 import { ShareGame } from "@/lib/share/types";
+
+const ShareImagePreviewDialog = dynamic(
+  () => import("@/components/share/ShareImagePreviewDialog").then((mod) => mod.ShareImagePreviewDialog)
+);
+const ShareLinkDialog = dynamic(
+  () => import("@/components/share/ShareLinkDialog").then((mod) => mod.ShareLinkDialog)
+);
 
 type NoticeKind = "success" | "error" | "info";
 
@@ -14,7 +20,7 @@ interface SharePlatformActionsProps {
   shareId: string | null;
   games: Array<ShareGame | null>;
   creatorName?: string | null;
-  onNotice: (kind: NoticeKind, message: string) => void;
+  onNotice?: (kind: NoticeKind, message: string) => void;
 }
 
 export function SharePlatformActions({
@@ -39,16 +45,20 @@ export function SharePlatformActions({
     return kindMeta.shareTitle.replace("我", name);
   }, [creatorName, kindMeta.shareTitle]);
 
+  function handleNotice(kindValue: NoticeKind, message: string) {
+    onNotice?.(kindValue, message);
+  }
+
   const disabled = !shareId;
 
   const baseClass =
-    "inline-flex items-center justify-center gap-2 rounded-full border px-6 py-3 font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 bg-white border-gray-200 text-gray-700 hover:bg-gray-50";
+    "inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3 font-bold text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-45";
 
   return (
     <div className="grid w-full max-w-[42rem] grid-cols-1 gap-3 sm:grid-cols-2">
       <Button
         variant="default"
-        className="order-1 inline-flex items-center justify-center gap-2 rounded-full bg-gray-900 px-6 py-3 font-bold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-45 sm:order-2"
+        className="order-1 inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 font-bold text-background transition-colors hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45 sm:order-2"
         data-testid="share-generate-image"
         disabled={disabled}
         onClick={() => {
@@ -72,7 +82,7 @@ export function SharePlatformActions({
         生成分享链接
       </Button>
 
-      {shareId ? (
+      {shareId && previewOpen ? (
         <ShareImagePreviewDialog
           open={previewOpen}
           onOpenChange={setPreviewOpen}
@@ -81,15 +91,15 @@ export function SharePlatformActions({
           title={shareTitle}
           games={games}
           creatorName={creatorName}
-          onNotice={onNotice}
+          onNotice={handleNotice}
         />
       ) : null}
-      {shareUrl ? (
+      {shareUrl && linkDialogOpen ? (
         <ShareLinkDialog
           open={linkDialogOpen}
           onOpenChange={setLinkDialogOpen}
           shareUrl={shareUrl}
-          onNotice={onNotice}
+          onNotice={handleNotice}
         />
       ) : null}
     </div>

@@ -40,7 +40,7 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
   return (
     <footer
       className={cn(
-        "mx-auto w-full max-w-2xl border-t border-slate-500 pt-8 text-center text-xs text-slate-500",
+        "mx-auto w-full max-w-2xl border-t border-border pt-8 text-center text-xs text-muted-foreground",
         className
       )}
     >
@@ -71,16 +71,16 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
         开发者：苍旻白轮
       </p>
       <div className="mt-2 flex items-center justify-center gap-4">
-        <a href="https://weibo.com/u/6571509464" target="_blank" rel="noreferrer" aria-label="微博" className="text-gray-400 hover:text-gray-600">
+        <a href="https://weibo.com/u/6571509464" target="_blank" rel="noreferrer" aria-label="微博" className="text-muted-foreground transition-colors hover:text-foreground">
           <FaWeibo className="h-5 w-5" />
         </a>
-        <a href="https://space.bilibili.com/808024" target="_blank" rel="noreferrer" aria-label="哔哩哔哩" className="text-gray-400 hover:text-gray-600">
+        <a href="https://space.bilibili.com/808024" target="_blank" rel="noreferrer" aria-label="哔哩哔哩" className="text-muted-foreground transition-colors hover:text-foreground">
           <SiBilibili className="h-5 w-5" />
         </a>
-        <a href="https://github.com/SomiaWhiteRing" target="_blank" rel="noreferrer" aria-label="GitHub" className="text-gray-400 hover:text-gray-600">
+        <a href="https://github.com/SomiaWhiteRing" target="_blank" rel="noreferrer" aria-label="GitHub" className="text-muted-foreground transition-colors hover:text-foreground">
           <FaGithub className="h-5 w-5" />
         </a>
-        <a href="https://bangumi.tv/user/whitering" target="_blank" rel="noreferrer" aria-label="Bangumi" className="text-gray-400 hover:text-gray-600">
+        <a href="https://bangumi.tv/user/whitering" target="_blank" rel="noreferrer" aria-label="Bangumi" className="text-muted-foreground transition-colors hover:text-foreground">
           <svg
             viewBox="0 0 1024 1024"
             xmlns="http://www.w3.org/2000/svg"
@@ -104,7 +104,7 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
           />
         </a>
       </div>
-      <div className="mt-3 flex flex-nowrap items-center justify-center gap-2 text-xs text-slate-500">
+      <div className="mt-3 flex flex-nowrap items-center justify-center gap-2 text-xs text-muted-foreground">
         <a
           href="https://hits.sh/my9.shatranj.space/"
           target="_blank"
@@ -123,7 +123,7 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
           <DialogTrigger asChild>
             <button
               type="button"
-              className="bg-transparent p-0 text-slate-600 transition-colors hover:text-slate-800 hover:underline"
+              className="bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground hover:underline"
             >
               吐槽反馈
             </button>
@@ -141,7 +141,7 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
                 loading="lazy"
               />
             ) : (
-              <p className="p-6 text-sm text-slate-500">
+              <p className="p-6 text-sm text-muted-foreground">
                 暂未配置 Tally 表单。请在 <code>.env.local</code> 设置
                 <code> NEXT_PUBLIC_TALLY_FORM_URL</code>。
               </p>
