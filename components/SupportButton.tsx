@@ -17,6 +17,9 @@ const donationAcknowledgements: Array<{
   amount: string;
   message: string;
 }> = [
+  { date: "2026-03-12", name: "不想起床bot", amount: "10", message: "居然有妄想症赏10元" },
+  { date: "2026-03-12", name: "💿", amount: "6", message: "加油呀" },
+  { date: "2026-03-12", name: "17", amount: "5.2", message: "感谢老师带我回忆了一次童年过往的美好" },
   { date: "2026-03-12", name: "匿名", amount: "50", message: "太棒啦宝宝" },
   { date: "2026-03-12", name: "许喆隆", amount: "3", message: "" },
   { date: "2026-03-12", name: "太阳即为正義", amount: "3", message: "DITF国家队天下第一" },
@@ -43,7 +46,7 @@ const donationAcknowledgements: Array<{
   { date: "2026-03-11", name: "匿名", amount: "5", message: "" },
   { date: "2026-03-11", name: "Eren", amount: "5", message: "2026加油" },
   { date: "2026-03-11", name: "my", amount: "1", message: "天才来的吧！想法太棒了！" },
-  { date: "2026-03-11", name: "一哥酱", amount: "1", message: "能不能加一个电影hhh超爱的（开发者注：因为项目和bangumi强绑定可能短期内没办法呢……）" },
+  { date: "2026-03-11", name: "一哥酱", amount: "1", message: "能不能加一个电影hhh超爱的" },
   { date: "2026-03-11", name: "匿名", amount: "20", message: "🔥旻🔥" },
   { date: "2026-03-11", name: "匿名", amount: "5.2", message: "" },
   { date: "2026-03-11", name: "小木", amount: "2000", message: "（开发者注：我永恒的爱与感谢……）" },
