@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { SUBJECT_KIND_ORDER, SubjectKind, getSubjectKindMeta } from "@/lib/subject-kind";
 import { cn } from "@/lib/utils";
 
+function getKindPrefix(kind: SubjectKind): string {
+  if (kind === "character") return "构成我的九个";
+  if (kind === "person") return "构成我的九位";
+  return "构成我的九部";
+}
+
 export default function HomeKindEntry() {
   const [kind, setKind] = useState<SubjectKind>("game");
   const pickerRef = useRef<HTMLDivElement | null>(null);
@@ -18,6 +24,8 @@ export default function HomeKindEntry() {
     manga: null,
     lightnovel: null,
     work: null,
+    character: null,
+    person: null,
   });
 
   function scrollKindIntoCenter(targetKind: SubjectKind, behavior: ScrollBehavior) {
@@ -84,7 +92,7 @@ export default function HomeKindEntry() {
 
   useEffect(() => {
     const { label } = getSubjectKindMeta(kind);
-    document.title = `构成我的九部${label}`;
+    document.title = `${getKindPrefix(kind)}${label}`;
   }, [kind]);
 
   return (
@@ -94,7 +102,7 @@ export default function HomeKindEntry() {
           <div className="flex flex-col items-center gap-6 sm:gap-8">
             <div className="inline-flex items-center">
               <h1 className="whitespace-nowrap pr-2 text-[2.08rem] font-black leading-none tracking-tight text-foreground sm:pr-3 sm:text-[3.3rem]">
-                构成我的九部
+                {getKindPrefix(kind)}
               </h1>
 
               <div className="relative border-x-2 border-foreground px-2 sm:px-3">

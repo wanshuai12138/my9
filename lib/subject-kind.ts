@@ -1,4 +1,4 @@
-export type SubjectKind = "game" | "anime" | "tv" | "movie" | "manga" | "lightnovel" | "work";
+export type SubjectKind = "game" | "anime" | "tv" | "movie" | "manga" | "lightnovel" | "work" | "character" | "person";
 
 export const DEFAULT_SUBJECT_KIND: SubjectKind = "game";
 
@@ -10,6 +10,8 @@ export const SUBJECT_KIND_ORDER: SubjectKind[] = [
   "manga",
   "lightnovel",
   "work",
+  "character",
+  "person",
 ];
 
 type KindSearchConfig = {
@@ -36,7 +38,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   game: {
     kind: "game",
     label: "游戏",
-    longLabel: "九部游戏",
+    longLabel: "构成我的九部游戏",
     subtitle: "向世界传达你所爱的游戏。",
     searchPlaceholder: "输入游戏名称",
     searchDialogTitle: "搜索游戏",
@@ -52,7 +54,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   anime: {
     kind: "anime",
     label: "动画",
-    longLabel: "九部动画",
+    longLabel: "构成我的九部动画",
     subtitle: "向世界传达你所爱的动画。",
     searchPlaceholder: "输入动画名称",
     searchDialogTitle: "搜索动画",
@@ -68,7 +70,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   manga: {
     kind: "manga",
     label: "漫画",
-    longLabel: "九部漫画",
+    longLabel: "构成我的九部漫画",
     subtitle: "向世界传达你所爱的漫画。",
     searchPlaceholder: "输入漫画名称",
     searchDialogTitle: "搜索漫画",
@@ -85,7 +87,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   lightnovel: {
     kind: "lightnovel",
     label: "轻小说",
-    longLabel: "九部轻小说",
+    longLabel: "构成我的九部轻小说",
     subtitle: "向世界传达你所爱的轻小说。",
     searchPlaceholder: "输入轻小说名称",
     searchDialogTitle: "搜索轻小说",
@@ -102,7 +104,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   tv: {
     kind: "tv",
     label: "电视剧",
-    longLabel: "九部电视剧",
+    longLabel: "构成我的九部电视剧",
     subtitle: "向世界传达你所爱的电视剧。",
     searchPlaceholder: "输入电视剧名称",
     searchDialogTitle: "搜索电视剧",
@@ -115,7 +117,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   movie: {
     kind: "movie",
     label: "电影",
-    longLabel: "九部电影",
+    longLabel: "构成我的九部电影",
     subtitle: "向世界传达你所爱的电影。",
     searchPlaceholder: "输入电影名称",
     searchDialogTitle: "搜索电影",
@@ -128,7 +130,7 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   work: {
     kind: "work",
     label: "作品",
-    longLabel: "九部作品",
+    longLabel: "构成我的九部作品",
     subtitle: "向世界传达你所爱的作品。",
     searchPlaceholder: "输入作品名称",
     searchDialogTitle: "搜索作品",
@@ -136,6 +138,32 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
     shareTitle: "构成我的九部作品",
     draftStorageKey: "my-nine-work:v1",
     trendLabel: "作品",
+    search: {},
+  },
+  character: {
+    kind: "character",
+    label: "角色",
+    longLabel: "构成我的九个角色",
+    subtitle: "向世界传达你所爱的角色。",
+    searchPlaceholder: "输入角色名称",
+    searchDialogTitle: "搜索角色",
+    searchIdleHint: "输入角色名称开始搜索",
+    shareTitle: "构成我的九个角色",
+    draftStorageKey: "my-nine-character:v1",
+    trendLabel: "角色",
+    search: {},
+  },
+  person: {
+    kind: "person",
+    label: "人物",
+    longLabel: "构成我的九位人物",
+    subtitle: "向世界传达你所爱的人物。",
+    searchPlaceholder: "输入人物名称",
+    searchDialogTitle: "搜索人物",
+    searchIdleHint: "输入人物名称开始搜索",
+    shareTitle: "构成我的九位人物",
+    draftStorageKey: "my-nine-person:v1",
+    trendLabel: "人物",
     search: {},
   },
 };

@@ -712,7 +712,7 @@ export default function My9V3App({
         <header className="space-y-3 text-center">
           <div className="inline-flex items-center gap-2 sm:gap-3">
             <h1 className="whitespace-nowrap text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
-              构成我的九部{kindMeta.label}
+              {kindMeta.longLabel}
             </h1>
             {!isReadonly ? (
               <button

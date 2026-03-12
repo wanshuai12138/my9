@@ -30,7 +30,7 @@ export default function My9ReadonlyPage({ kind, shareId, initialShareData }: My9
       <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4">
         <header className="space-y-3 text-center">
           <h1 className="whitespace-nowrap text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">
-            构成我的九部{kindMeta.label}
+            {kindMeta.longLabel}
           </h1>
           <p className="text-sm text-muted-foreground">{kindMeta.subtitle}</p>
           <Link
