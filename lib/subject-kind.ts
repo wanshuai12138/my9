@@ -182,8 +182,8 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
   character: {
     kind: "character",
     label: "角色",
-    longLabel: "九个角色",
-    selectionUnit: "个",
+    longLabel: "九名角色",
+    selectionUnit: "名",
     subtitle: "向世界传达你所爱的角色。",
     searchPlaceholder: "输入角色名称",
     searchDialogTitle: "搜索角色",

@@ -148,6 +148,10 @@ function subjectSourceLabel(kind: SubjectKind): string {
   return "Bangumi";
 }
 
+function shouldTopCropCover(kind: SubjectKind) {
+  return kind === "character" || kind === "person";
+}
+
 function toTrendsCoverUrl(cover: string | null | undefined): string | null {
   if (!cover) return null;
 
@@ -293,7 +297,7 @@ function TrendGameMiniCard({ kind, rank, game, count, tagLabel, showReleaseYear 
                     width={48}
                     height={64}
                     unoptimized
-                    className="h-full w-full object-cover"
+                    className={cn("h-full w-full object-cover", shouldTopCropCover(kind) && "object-top")}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">无图</div>
