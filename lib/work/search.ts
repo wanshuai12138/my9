@@ -33,6 +33,14 @@ function normalizeSubjectId(value: string | number): string {
   return String(value).trim();
 }
 
+function normalizeBangumiSubjectType(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  const normalized = Math.trunc(value);
+  return normalized > 0 ? normalized : null;
+}
+
 function sourcePriority(source: WorkSourceKey): number {
   if (source === "bangumi") return 0;
   if (source.startsWith("tmdb:")) return 1;
@@ -82,14 +90,26 @@ function scoreCandidate(query: string, subject: ShareSubject): number {
   return score;
 }
 
-function toSameYearNameKey(subject: ShareSubject): string | null {
-  const releaseYear = typeof subject.releaseYear === "number" ? Math.trunc(subject.releaseYear) : 0;
+function toSameYearNameKey(candidate: ScoredItem): string | null {
+  const releaseYear =
+    typeof candidate.item.releaseYear === "number"
+      ? Math.trunc(candidate.item.releaseYear)
+      : 0;
   if (!releaseYear) return null;
 
-  const name = normalizeText((subject.localizedName || subject.name || "").trim());
+  const name = normalizeText((candidate.item.localizedName || candidate.item.name || "").trim());
   if (!name) return null;
 
-  return `${releaseYear}:${name}`;
+  if (candidate.source === "bangumi") {
+    // Bangumi work search mixes multiple media types; include subjectType to avoid cross-media dedupe.
+    const subjectType = normalizeBangumiSubjectType(candidate.item.subjectType);
+    if (!subjectType) {
+      return null;
+    }
+    return `bangumi:${subjectType}:${releaseYear}:${name}`;
+  }
+
+  return `${candidate.source}:${releaseYear}:${name}`;
 }
 
 function rankChannelItems(query: string, source: WorkSourceKey, items: ShareSubject[]): ScoredItem[] {
@@ -119,7 +139,7 @@ function mergeWorkItems(query: string, channels: Array<{ source: WorkSourceKey; 
       return false;
     }
 
-    const sameYearNameKey = toSameYearNameKey(candidate.item);
+    const sameYearNameKey = toSameYearNameKey(candidate);
     if (sameYearNameKey) {
       const existingIndex = sameYearNameIndexMap.get(sameYearNameKey);
       if (typeof existingIndex === "number") {
