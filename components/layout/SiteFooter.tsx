@@ -13,6 +13,7 @@ import { FaWeibo, FaGithub } from "react-icons/fa";
 import { SiBilibili } from "react-icons/si";
 import { SupportButton } from "@/components/SupportButton";
 import type { SubjectKind } from "@/lib/subject-kind";
+import { OPEN_SOURCE_CONTRIBUTORS } from "@/lib/open-source-contributors";
 
 interface SiteFooterProps {
   className?: string;
@@ -38,6 +39,7 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
   const tallyEmbedUrl = tallyFormUrl ? buildTallyEmbedUrl(tallyFormUrl) : "";
   const isTmdbKind = kind === "tv" || kind === "movie";
   const isAppleMusicKind = kind === "song" || kind === "album";
+  const isNeoDbKind = kind === "book" || kind === "podcast" || kind === "performance";
 
   return (
     <footer
@@ -66,6 +68,15 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
           >
             Apple Music
           </a>
+        ) : isNeoDbKind ? (
+          <a
+            href="https://neodb.social/"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-sky-600 hover:underline"
+          >
+            NeoDB
+          </a>
         ) : (
           <a
             href="https://bangumi.tv/"
@@ -79,7 +90,40 @@ export function SiteFooter({ className, kind }: SiteFooterProps) {
         {" "}强力驱动
       </p>
       <p className="mt-2">
-        开发者：苍旻白轮
+        开发者：苍旻白轮 及{" "}
+        <Dialog>
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 transition-colors hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
+            >
+              开源贡献者
+            </button>
+          </DialogTrigger>
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-xl rounded-2xl p-4 md:w-[92vw] md:p-5">
+            <DialogHeader className="text-left">
+              <DialogTitle>开源贡献者鸣谢</DialogTitle>
+              <DialogDescription>
+                感谢以下开发者对核心功能演进的贡献：
+              </DialogDescription>
+            </DialogHeader>
+            <ul className="space-y-3 text-sm text-muted-foreground">
+              {OPEN_SOURCE_CONTRIBUTORS.map((item) => (
+                <li key={item.id} className="rounded-xl border border-border bg-card p-3">
+                  <a
+                    href={item.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
+                  >
+                    {item.id}
+                  </a>
+                  <p className="mt-1">{item.contribution}</p>
+                </li>
+              ))}
+            </ul>
+          </DialogContent>
+        </Dialog>
       </p>
       <div className="mt-2 flex items-center justify-center gap-4">
         <a href="https://weibo.com/u/6571509464" target="_blank" rel="noreferrer" aria-label="微博" className="text-muted-foreground transition-colors hover:text-foreground">

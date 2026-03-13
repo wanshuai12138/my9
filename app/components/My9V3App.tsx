@@ -491,7 +491,9 @@ export default function My9V3App({
             ? "tmdb"
             : json.source === "itunes"
               ? "itunes"
-              : "bangumi",
+              : json.source === "neodb"
+                ? "neodb"
+                : "bangumi",
         kind,
         items: Array.isArray(json.items) ? json.items : [],
         noResultQuery: typeof json.noResultQuery === "string" ? json.noResultQuery : null,
@@ -719,7 +721,7 @@ export default function My9V3App({
             大家的构成
             <ChevronRight className="h-4 w-4 text-sky-500 dark:text-sky-300" aria-hidden="true" />
           </button>
-          <p className="text-sm text-amber-600 dark:text-amber-400">现已追加电影/电视剧/单曲/专辑/人物/角色的支持！</p>
+          <p className="text-sm text-amber-600 dark:text-amber-400">现已支持电影 / 电视剧 / 书籍 / 播客 / 舞台剧 / 单曲 / 专辑 / 人物 / 角色！</p>
           <SupportButton/>
         </header>
 

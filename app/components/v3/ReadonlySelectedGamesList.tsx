@@ -61,9 +61,25 @@ function appleMusicLink(game: ShareGame): string {
   return `https://music.apple.com/cn/search?term=${query}`;
 }
 
+function neoDbLink(game: ShareGame): string {
+  const fromStore = game.storeUrls?.neodb?.trim();
+  if (fromStore) {
+    return fromStore;
+  }
+
+  const id = String(game.id || "").trim();
+  if (/^https?:\/\//i.test(id)) {
+    return id;
+  }
+  return "https://neodb.social/";
+}
+
 function subjectLink(game: ShareGame, kind?: SubjectKind, cat?: number): string {
   if (kind === "song" || kind === "album") {
     return appleMusicLink(game);
+  }
+  if (kind === "book" || kind === "podcast" || kind === "performance") {
+    return neoDbLink(game);
   }
   if (kind === "tv") return tmdbTvLink(game);
   if (kind === "movie") return tmdbMovieLink(game);
@@ -75,6 +91,9 @@ function subjectLink(game: ShareGame, kind?: SubjectKind, cat?: number): string 
 function subjectSourceLabel(kind?: SubjectKind): string {
   if (kind === "song" || kind === "album") {
     return "Apple Music";
+  }
+  if (kind === "book" || kind === "podcast" || kind === "performance") {
+    return "NeoDB";
   }
   if (kind === "tv" || kind === "movie") {
     return "TMDB";

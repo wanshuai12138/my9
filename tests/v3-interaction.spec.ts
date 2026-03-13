@@ -27,6 +27,27 @@ function createFilledGames() {
 }
 
 function buildSearchResponse(query: string, kind = DEFAULT_KIND) {
+  if (kind === "book" || kind === "podcast" || kind === "performance") {
+    const slug = query.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "item";
+    return {
+      ok: true,
+      source: "neodb",
+      kind,
+      items: [
+        {
+          id: `https://neodb.social/${kind}/${slug}`,
+          name: `NeoDB ${kind} ${query}`,
+          cover: `https://neodb.social/m/item/${kind}/${slug}.jpg`,
+          genres: kind === "podcast" ? ["播客"] : kind === "performance" ? ["话剧"] : ["书籍"],
+          storeUrls: {
+            neodb: `https://neodb.social/${kind}/${slug}`,
+          },
+        },
+      ],
+      noResultQuery: null,
+    };
+  }
+
   if (query.toLowerCase() === "zelda") {
     return {
       ok: true,
@@ -226,12 +247,27 @@ async function mockTrendsApi(page: Page) {
       ? "88001"
       : kind === "person"
         ? "99002"
-        : "77001";
+        : kind === "book"
+          ? "https://neodb.social/book/trend-book"
+          : kind === "podcast"
+            ? "https://neodb.social/podcast/trend-podcast"
+            : kind === "performance"
+              ? "https://neodb.social/performance/trend-performance"
+              : "77001";
     const trendName = kind === "character"
       ? "测试角色"
       : kind === "person"
         ? "测试人物"
-        : "测试条目";
+        : kind === "book"
+          ? "测试书籍"
+          : kind === "podcast"
+            ? "测试播客"
+            : kind === "performance"
+              ? "测试舞台剧"
+              : "测试条目";
+    const trendCover = kind === "book" || kind === "podcast" || kind === "performance"
+      ? `https://neodb.social/m/item/${kind}/trend.jpg`
+      : "https://lain.bgm.tv/r/400/pic/cover/l/trend.jpg";
 
     await route.fulfill({
       status: 200,
@@ -256,7 +292,7 @@ async function mockTrendsApi(page: Page) {
                 id: trendId,
                 name: trendName,
                 localizedName: trendName,
-                cover: "https://lain.bgm.tv/r/400/pic/cover/l/trend.jpg",
+                cover: trendCover,
                 releaseYear: 2020,
                 count: 12,
               },
@@ -284,6 +320,9 @@ test.describe("v3 interaction", () => {
     await expect(page.getByRole("button", { name: "动画" })).toBeVisible();
     await expect(page.getByRole("button", { name: "电视剧" })).toBeVisible();
     await expect(page.getByRole("button", { name: "电影" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "书籍" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "播客" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "舞台剧" })).toBeVisible();
     await expect(page.getByRole("link", { name: "开始填写！" })).toBeVisible();
     await page.getByRole("link", { name: "开始填写！" }).click();
     await expect(page).toHaveURL("/game", { timeout: 30_000 });
@@ -667,6 +706,51 @@ test.describe("v3 interaction", () => {
     }
   });
 
+  test("书籍、播客与舞台剧分享页条目外链指向 NeoDB 条目页", async ({ page }) => {
+    const cases = [
+      {
+        kind: "book",
+        subjectLabel: "书籍",
+        searchPlaceholder: "输入书籍名称",
+        query: "book-q1",
+        href: "https://neodb.social/book/book-q1",
+      },
+      {
+        kind: "podcast",
+        subjectLabel: "播客",
+        searchPlaceholder: "输入播客名称",
+        query: "podcast-q1",
+        href: "https://neodb.social/podcast/podcast-q1",
+      },
+      {
+        kind: "performance",
+        subjectLabel: "舞台剧",
+        searchPlaceholder: "输入舞台剧/演出名称",
+        query: "performance-q1",
+        href: "https://neodb.social/performance/performance-q1",
+      },
+    ] as const;
+
+    for (const item of cases) {
+      await page.goto(`/${item.kind}`);
+      await fillSlotByKind(page, {
+        slot: 1,
+        subjectLabel: item.subjectLabel,
+        searchPlaceholder: item.searchPlaceholder,
+        query: item.query,
+      });
+
+      page.once("dialog", async (dialog) => {
+        await dialog.accept();
+      });
+      await page.getByRole("button", { name: /^还差 8 .可保存$/ }).click();
+      await expect(page).toHaveURL(`/${item.kind}/s/${SHARE_ID}`, { timeout: 30_000 });
+
+      const link = page.getByTitle("在 NeoDB 查看").first();
+      await expect(link).toHaveAttribute("href", item.href);
+    }
+  });
+
   test("趋势页角色与人物外链分别指向 Bangumi 角色/人物页", async ({ page }) => {
     await mockTrendsApi(page);
 
@@ -682,6 +766,34 @@ test.describe("v3 interaction", () => {
     await expect(trendLink).toHaveAttribute("href", "https://bgm.tv/person/99002", {
       timeout: 15_000,
     });
+  });
+
+  test("趋势页书籍、播客与舞台剧外链指向 NeoDB 条目页", async ({ page }) => {
+    await mockTrendsApi(page);
+
+    const cases = [
+      {
+        kind: "book",
+        expectedHref: "https://neodb.social/book/trend-book",
+      },
+      {
+        kind: "podcast",
+        expectedHref: "https://neodb.social/podcast/trend-podcast",
+      },
+      {
+        kind: "performance",
+        expectedHref: "https://neodb.social/performance/trend-performance",
+      },
+    ] as const;
+
+    for (const item of cases) {
+      await page.goto(`/trends?kind=${item.kind}&period=24h&view=overall`);
+      await page.getByRole("button", { name: "今天" }).click();
+      const trendLink = page.locator('a[title="在 NeoDB 查看"]').first();
+      await expect(trendLink).toHaveAttribute("href", item.expectedHref, {
+        timeout: 15_000,
+      });
+    }
   });
 
   test("移动端分享按钮顺序为图片在上链接在下", async ({ page }) => {

@@ -5,6 +5,9 @@ export type SubjectKind =
   | "movie"
   | "manga"
   | "lightnovel"
+  | "book"
+  | "podcast"
+  | "performance"
   | "work"
   | "song"
   | "album"
@@ -20,6 +23,9 @@ export const SUBJECT_KIND_ORDER: SubjectKind[] = [
   "movie",
   "manga",
   "lightnovel",
+  "book",
+  "podcast",
+  "performance",
   "song",
   "album",
   "work",
@@ -113,6 +119,45 @@ const KIND_META_MAP: Record<SubjectKind, SubjectKindMeta> = {
       strictPlatform: "小说",
       bangumiSearchCat: 1,
     },
+  },
+  book: {
+    kind: "book",
+    label: "书籍",
+    longLabel: "九本书籍",
+    selectionUnit: "本",
+    subtitle: "向世界传达你所爱的书籍。",
+    searchPlaceholder: "输入书籍名称",
+    searchDialogTitle: "搜索书籍",
+    searchIdleHint: "输入书籍名称开始搜索",
+    draftStorageKey: "my-nine-book:v1",
+    trendLabel: "书籍",
+    search: {},
+  },
+  podcast: {
+    kind: "podcast",
+    label: "播客",
+    longLabel: "九档播客",
+    selectionUnit: "档",
+    subtitle: "向世界传达你所爱的播客。",
+    searchPlaceholder: "输入播客名称",
+    searchDialogTitle: "搜索播客",
+    searchIdleHint: "输入播客名称开始搜索",
+    draftStorageKey: "my-nine-podcast:v1",
+    trendLabel: "播客",
+    search: {},
+  },
+  performance: {
+    kind: "performance",
+    label: "舞台剧",
+    longLabel: "九部舞台剧 / 现场演出",
+    selectionUnit: "部",
+    subtitle: "向世界传达你所爱的舞台剧与现场演出。",
+    searchPlaceholder: "输入舞台剧/演出名称",
+    searchDialogTitle: "搜索舞台剧 / 现场演出",
+    searchIdleHint: "输入舞台剧或演出名称开始搜索",
+    draftStorageKey: "my-nine-performance:v1",
+    trendLabel: "舞台剧 / 现场演出",
+    search: {},
   },
   tv: {
     kind: "tv",

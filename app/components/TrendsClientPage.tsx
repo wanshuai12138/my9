@@ -133,9 +133,20 @@ function toAppleMusicSearchLink(name: string): string {
   return `https://music.apple.com/cn/search?term=${query}`;
 }
 
+function toNeoDbLink(subjectId: string | undefined): string {
+  const normalizedId = String(subjectId || "").trim();
+  if (/^https?:\/\//i.test(normalizedId)) {
+    return normalizedId;
+  }
+  return "https://neodb.social/";
+}
+
 function toSubjectLink(kind: SubjectKind, subjectId: string | undefined, name: string): string {
   if (kind === "song" || kind === "album") {
     return toAppleMusicSearchLink(name);
+  }
+  if (kind === "book" || kind === "podcast" || kind === "performance") {
+    return toNeoDbLink(subjectId);
   }
   if (kind === "tv") {
     return toTmdbTvLink(subjectId, name);
@@ -155,6 +166,9 @@ function toSubjectLink(kind: SubjectKind, subjectId: string | undefined, name: s
 function subjectSourceLabel(kind: SubjectKind): string {
   if (kind === "song" || kind === "album") {
     return "Apple Music";
+  }
+  if (kind === "book" || kind === "podcast" || kind === "performance") {
+    return "NeoDB";
   }
   if (kind === "tv" || kind === "movie") {
     return "TMDB";

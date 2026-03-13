@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { SHARE_COUNT_SNAPSHOT } from "@/lib/generated/share-count-snapshot";
+import { OPEN_SOURCE_CONTRIBUTORS } from "@/lib/open-source-contributors";
 
 const donationAcknowledgements: Array<{
   date: string;
@@ -217,54 +218,20 @@ export function SupportButton() {
             <h4 className="text-sm font-semibold text-foreground">特别鸣谢</h4>
             <p className="mt-1 text-sm text-muted-foreground">感谢以下开发者对核心功能演进的贡献：</p>
             <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-              <li>
-                感谢{" "}
-                <a
-                  href="https://github.com/maxchang3"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
-                >
-                  @maxchang3
-                </a>{" "}
-                贡献卡片拖拽功能。
-              </li>
-              <li>
-                感谢{" "}
-                <a
-                  href="https://github.com/MiQieR"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
-                >
-                  @MiQieR
-                </a>{" "}
-                贡献电影/电视剧查询功能。
-              </li>
-              <li>
-                感谢{" "}
-                <a
-                  href="https://github.com/wanshuai12138"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
-                >
-                  @wanshuai12138
-                </a>{" "}
-                贡献单曲/专辑查询功能。
-              </li>
-              <li>
-                感谢{" "}
-                <a
-                  href="https://github.com/AlanWanco"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
-                >
-                  @AlanWanco
-                </a>{" "}
-                贡献角色/人物查询功能。
-              </li>
+              {OPEN_SOURCE_CONTRIBUTORS.map((item) => (
+                <li key={item.id}>
+                  感谢{" "}
+                  <a
+                    href={item.profileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-sky-600 underline decoration-sky-300 underline-offset-2 hover:text-sky-700 dark:text-sky-400 dark:decoration-sky-500 dark:hover:text-sky-300"
+                  >
+                    {item.id}
+                  </a>{" "}
+                  {item.contribution}
+                </li>
+              ))}
             </ul>
           </div>
         </section>
