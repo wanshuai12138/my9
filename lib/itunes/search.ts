@@ -5,7 +5,7 @@ const ITUNES_API_BASE_URL = "https://itunes.apple.com";
 const ITUNES_RETRY_MAX_ATTEMPTS = 3;
 const ITUNES_RETRY_BASE_DELAY_MS = 300;
 const ITUNES_RETRY_MAX_DELAY_MS = 10 * 1000;
-const ITUNES_RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
+const ITUNES_RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 502, 503, 504]);
 
 type ItunesTrackResult = {
   wrapperType: string;
