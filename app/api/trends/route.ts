@@ -5,6 +5,7 @@ import {
   parseTrendPeriod,
   parseTrendView,
   parseTrendYearPage,
+  resolveTrendViewByKind,
   resolveTrendResponse,
   TRENDS_STORE_CACHE_TTL_SECONDS,
 } from "@/lib/share/trends-query";
@@ -31,8 +32,8 @@ function createTrendsCacheHeaders(cdnTtlSeconds: number) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const period = parseTrendPeriod(searchParams.get("period"));
-  const view = parseTrendView(searchParams.get("view"));
   const kind = parseTrendKind(searchParams.get("kind"));
+  const view = resolveTrendViewByKind(kind, parseTrendView(searchParams.get("view")));
   const overallPage = parseTrendOverallPage(searchParams.get("overallPage"));
   const yearPage = parseTrendYearPage(searchParams.get("yearPage"));
   const response = await resolveTrendResponse({

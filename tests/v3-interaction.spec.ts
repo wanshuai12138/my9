@@ -811,8 +811,11 @@ test.describe("v3 interaction", () => {
   test("趋势页角色与人物外链分别指向 Bangumi 角色/人物页", async ({ page }) => {
     await mockTrendsApi(page);
 
-    await page.goto("/trends?kind=character&period=24h&view=overall");
+    await page.goto("/trends?kind=character&period=24h&view=year");
     await page.getByRole("button", { name: "今天" }).click();
+    await expect(page.getByRole("button", { name: "类型" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "现代" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "经典" })).toHaveCount(0);
 
     const trendLink = page.locator('a[title="在 Bangumi 查看"]').first();
     await expect(trendLink).toHaveAttribute("href", "https://bgm.tv/character/88001", {

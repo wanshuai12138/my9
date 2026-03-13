@@ -9,6 +9,7 @@ import {
   parseTrendPeriod,
   parseTrendView,
   parseTrendYearPage,
+  resolveTrendViewByKind,
   resolveTrendResponse,
 } from "@/lib/share/trends-query";
 
@@ -67,7 +68,7 @@ export default async function TrendsPage({
 }) {
   const initialKind = parseTrendKind(resolveSearchParam(searchParams?.kind));
   const initialPeriod = parseTrendPeriod(resolveSearchParam(searchParams?.period));
-  const initialView = parseTrendView(resolveSearchParam(searchParams?.view));
+  const initialView = resolveTrendViewByKind(initialKind, parseTrendView(resolveSearchParam(searchParams?.view)));
   const initialOverallPage = parseTrendOverallPage(resolveSearchParam(searchParams?.overallPage));
   const initialYearPage = parseTrendYearPage(resolveSearchParam(searchParams?.yearPage));
   const initialParams = {

@@ -95,6 +95,17 @@ function shouldTopCropCover(kind: SubjectKind) {
   return kind === "character" || kind === "person";
 }
 
+function isOverallOnlyKind(kind: SubjectKind): boolean {
+  return kind === "character" || kind === "person";
+}
+
+function resolveViewByKind(kind: SubjectKind, view: TrendView): TrendView {
+  if (isOverallOnlyKind(kind)) {
+    return "overall";
+  }
+  return view;
+}
+
 function toTrendsCoverUrl(cover: string | null | undefined): string | null {
   if (!cover) return null;
 
@@ -330,7 +341,7 @@ export default function TrendsClientPage({
   );
   const [kind, setKind] = useState<SubjectKind>(initialKind);
   const [period, setPeriod] = useState<TrendPeriod>(initialPeriod);
-  const [view, setView] = useState<TrendView>(initialView);
+  const [view, setView] = useState<TrendView>(resolveViewByKind(initialKind, initialView));
   const [overallPage, setOverallPage] = useState<number>(initialOverallPage);
   const [yearPage, setYearPage] = useState<TrendYearPage>(initialYearPage);
   const [data, setData] = useState<TrendResponse | null>(initialData);
@@ -344,6 +355,7 @@ export default function TrendsClientPage({
   const kindTabsScrollerRef = useRef<HTMLDivElement | null>(null);
   const kindTabRefs = useRef<Partial<Record<SubjectKind, HTMLButtonElement | null>>>({});
   const kindTabsAutoScrolledRef = useRef(false);
+  const isCurrentKindOverallOnly = isOverallOnlyKind(kind);
   const requestOverallPage = view === "overall" ? overallPage : 1;
   const requestYearPage: TrendYearPage = view === "year" ? yearPage : "recent";
 
@@ -457,6 +469,13 @@ export default function TrendsClientPage({
   }, [kind, period]);
 
   useEffect(() => {
+    if (!isCurrentKindOverallOnly || view === "overall") {
+      return;
+    }
+    setView("overall");
+  }, [isCurrentKindOverallOnly, view]);
+
+  useEffect(() => {
     const scroller = kindTabsScrollerRef.current;
     const activeButton = kindTabRefs.current[kind];
     if (!scroller || !activeButton) return;
@@ -552,6 +571,10 @@ export default function TrendsClientPage({
   function switchKind(nextKind: SubjectKind) {
     setKindPickerOpen(false);
     if (nextKind === kind) return;
+    const nextView = resolveViewByKind(nextKind, view);
+    if (nextView !== view) {
+      setView(nextView);
+    }
     setKind(nextKind);
   }
 
@@ -612,7 +635,7 @@ export default function TrendsClientPage({
                             ? "bg-foreground text-background"
                             : "bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground"
                         )}
-                        onClick={() => setKind(option)}
+                        onClick={() => switchKind(option)}
                       >
                         <SubjectKindIcon kind={option} className="h-3.5 w-3.5" />
                         {optionMeta.label}
@@ -655,23 +678,25 @@ export default function TrendsClientPage({
         <section className="mb-5 rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="mb-4">
             <h2 className="text-lg font-bold text-foreground">排行榜</h2>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {VIEW_OPTIONS.map((option) => (
-                <Button
-                  key={option.value}
-                  size="sm"
-                  variant={option.value === view ? "default" : "outline"}
-                  className={
-                    option.value === view
-                      ? "rounded-full border border-foreground bg-foreground px-3 py-1.5 text-xs font-semibold text-background"
-                      : "rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-card-foreground hover:bg-accent hover:text-accent-foreground"
-                  }
-                  onClick={() => setView(option.value)}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
+            {!isCurrentKindOverallOnly ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {VIEW_OPTIONS.map((option) => (
+                  <Button
+                    key={option.value}
+                    size="sm"
+                    variant={option.value === view ? "default" : "outline"}
+                    className={
+                      option.value === view
+                        ? "rounded-full border border-foreground bg-foreground px-3 py-1.5 text-xs font-semibold text-background"
+                        : "rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                    }
+                    onClick={() => setView(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
 
             {showOverallPagination ? (
               <div className="mt-3 flex flex-wrap gap-2">
