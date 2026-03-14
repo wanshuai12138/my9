@@ -19,7 +19,7 @@
 - `screenshot/`：验收截图产物。
 
 ## 构建、开发与测试命令
-- `npm install`：安装依赖（建议 Node 18+）。
+- `npm install`：安装依赖（建议 Node 20.9+）。
 - `npm run dev`：本地开发（默认 `http://localhost:3000`）。
 - `npm run build`：生产构建。
 - `npm start`：启动生产构建产物。
@@ -84,7 +84,7 @@
 ## 分享存储 v2 运维
 - 迁移脚本默认读取 `my9_shares_v1`，并写入 `my9_share_registry_v2` / `my9_share_alias_v1` / `my9_subject_dim_v1` / `my9_trend_subject_*`。
 - 迁移完成后先执行 `node scripts/verify-shares-v2-migration.mjs`；仅当 `missing_count=0` 且 `orphan_alias_count=0` 才允许考虑关闭 v1 兜底。
-- 日常归档由 Cloudflare Workers Cron 调度 `worker.ts` 中的 `scheduled()`，当前配置在 `wrangler.jsonc`（`5 16 * * *`，即北京时间 `00:05`，每天一次）。
+- 日常归档由 Cloudflare Workers Cron 调度 `worker.js` 中的 `scheduled()`，当前配置在 `wrangler.jsonc`（`5 16 * * *`，即北京时间 `00:05`，每天一次）。
 - `app/api/cron/archive` 继续保留为手动运维入口；生产环境建议始终使用 `CRON_SECRET`。
 - 生产切换顺序：`v2 优先 + v1 兜底` -> 全量迁移与校验 -> 关闭兜底 -> 稳定观察后再删除 v1 表。
 

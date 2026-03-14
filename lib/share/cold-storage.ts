@@ -47,7 +47,12 @@ let s3ClientPromise: Promise<InstanceType<S3Module["S3Client"]> | null> | null =
 
 async function getS3Module(): Promise<S3Module> {
   if (!s3ModulePromise) {
-    s3ModulePromise = import("@aws-sdk/client-s3");
+    // Keep the Node fallback runtime-only so Cloudflare bundles don't trace
+    // the AWS SDK when the Worker uses the native R2 binding path.
+    const dynamicImport = new Function("specifier", "return import(specifier)") as (
+      specifier: string
+    ) => Promise<S3Module>;
+    s3ModulePromise = dynamicImport("@aws-sdk/" + "client-s3");
   }
   return s3ModulePromise;
 }

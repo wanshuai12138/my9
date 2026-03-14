@@ -5,16 +5,23 @@ import { SUBJECT_KIND_ORDER, getSubjectKindMeta, parseSubjectKind } from "@/lib/
 
 export const dynamicParams = false;
 
+type SubjectKindPageParams = {
+  kind: string;
+};
+
+type SubjectKindPageProps = {
+  params: Promise<SubjectKindPageParams>;
+};
+
 export function generateStaticParams() {
   return SUBJECT_KIND_ORDER.map((kind) => ({ kind }));
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   params,
-}: {
-  params: { kind: string };
-}): Metadata {
-  const kind = parseSubjectKind(params.kind);
+}: SubjectKindPageProps): Promise<Metadata> {
+  const { kind: rawKind } = await params;
+  const kind = parseSubjectKind(rawKind);
   if (!kind) {
     return { title: "页面不存在" };
   }
@@ -25,12 +32,11 @@ export function generateMetadata({
   };
 }
 
-export default function SubjectKindPage({
+export default async function SubjectKindPage({
   params,
-}: {
-  params: { kind: string };
-}) {
-  const kind = parseSubjectKind(params.kind);
+}: SubjectKindPageProps) {
+  const { kind: rawKind } = await params;
+  const kind = parseSubjectKind(rawKind);
   if (!kind) {
     notFound();
   }

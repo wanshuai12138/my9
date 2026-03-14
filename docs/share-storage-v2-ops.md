@@ -95,7 +95,7 @@ Useful flags:
 ## Cloudflare Cron (daily)
 
 - Cron route: `/api/cron/archive`
-- Scheduler entry: `worker.ts` `scheduled()`
+- Scheduler entry: `worker.js` `scheduled()`
 - Config file: `wrangler.jsonc`
 - Current schedule: `5 16 * * *` (UTC, Beijing `00:05`, once per day)
 - Scheduled job default behavior: archive shares older than `30` days

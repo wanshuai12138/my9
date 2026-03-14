@@ -6,12 +6,20 @@ import { isCanonicalShareId, normalizeShareId } from "@/lib/share/id";
 import { getShare } from "@/lib/share/storage";
 import { getSubjectKindShareTitle, parseSubjectKind } from "@/lib/subject-kind";
 
-export function generateMetadata({
+type ShareReadonlyPageParams = {
+  kind: string;
+  shareId: string;
+};
+
+type ShareReadonlyPageProps = {
+  params: Promise<ShareReadonlyPageParams>;
+};
+
+export async function generateMetadata({
   params,
-}: {
-  params: { kind: string; shareId: string };
-}): Metadata {
-  const kind = parseSubjectKind(params.kind);
+}: ShareReadonlyPageProps): Promise<Metadata> {
+  const { kind: rawKind } = await params;
+  const kind = parseSubjectKind(rawKind);
   if (!kind) {
     return { title: "页面不存在" };
   }
@@ -23,16 +31,15 @@ export function generateMetadata({
 
 export default async function ShareReadonlyPage({
   params,
-}: {
-  params: { kind: string; shareId: string };
-}) {
-  const kind = parseSubjectKind(params.kind);
-  const shareId = normalizeShareId(params.shareId);
+}: ShareReadonlyPageProps) {
+  const { kind: rawKind, shareId: rawShareId } = await params;
+  const kind = parseSubjectKind(rawKind);
+  const shareId = normalizeShareId(rawShareId);
   if (!kind || !shareId) {
     notFound();
   }
 
-  if (!isCanonicalShareId(params.shareId) || params.shareId.trim().toLowerCase() !== shareId) {
+  if (!isCanonicalShareId(rawShareId) || rawShareId.trim().toLowerCase() !== shareId) {
     permanentRedirect(`/${kind}/s/${shareId}`);
   }
 

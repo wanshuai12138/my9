@@ -27,12 +27,15 @@ type TrendsSearchParams = {
   yearPage?: string | string[];
 };
 
-export function generateMetadata({
+type TrendsPageProps = {
+  searchParams?: Promise<TrendsSearchParams>;
+};
+
+export async function generateMetadata({
   searchParams,
-}: {
-  searchParams?: TrendsSearchParams;
-}): Metadata {
-  const kind = parseTrendKind(resolveSearchParam(searchParams?.kind));
+}: TrendsPageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const kind = parseTrendKind(resolveSearchParam(resolvedSearchParams?.kind));
   return {
     title: `构成大家的${getSubjectKindMeta(kind).trendLabel}`,
   };
@@ -40,14 +43,16 @@ export function generateMetadata({
 
 export default async function TrendsPage({
   searchParams,
-}: {
-  searchParams?: TrendsSearchParams;
-}) {
-  const initialKind = parseTrendKind(resolveSearchParam(searchParams?.kind));
-  const initialPeriod = parseTrendPeriod(resolveSearchParam(searchParams?.period));
-  const initialView = resolveTrendViewByKind(initialKind, parseTrendView(resolveSearchParam(searchParams?.view)));
-  const initialOverallPage = parseTrendOverallPage(resolveSearchParam(searchParams?.overallPage));
-  const initialYearPage = parseTrendYearPage(resolveSearchParam(searchParams?.yearPage));
+}: TrendsPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const initialKind = parseTrendKind(resolveSearchParam(resolvedSearchParams?.kind));
+  const initialPeriod = parseTrendPeriod(resolveSearchParam(resolvedSearchParams?.period));
+  const initialView = resolveTrendViewByKind(
+    initialKind,
+    parseTrendView(resolveSearchParam(resolvedSearchParams?.view))
+  );
+  const initialOverallPage = parseTrendOverallPage(resolveSearchParam(resolvedSearchParams?.overallPage));
+  const initialYearPage = parseTrendYearPage(resolveSearchParam(resolvedSearchParams?.yearPage));
   const initialParams = {
     kind: initialKind,
     period: initialPeriod,

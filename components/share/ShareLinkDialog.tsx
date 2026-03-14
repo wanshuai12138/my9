@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,11 +44,12 @@ export function ShareLinkDialog({
 }: ShareLinkDialogProps) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
 
-  useEffect(() => {
-    if (!open) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
       setCopyStatus("idle");
     }
-  }, [open]);
+    onOpenChange(nextOpen);
+  }
 
   async function handleCopy() {
     try {
@@ -62,7 +63,7 @@ export function ShareLinkDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>生成分享链接</DialogTitle>
@@ -95,7 +96,7 @@ export function ShareLinkDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             关闭
           </Button>
         </DialogFooter>
