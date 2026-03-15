@@ -17,6 +17,10 @@ const donationAcknowledgements: Array<{
   amount: string;
   message: string;
 }> = [
+  { date: "2026-03-14", name: "Zeek🤗", amount: "6", message: "希望能挽救真实的评价体系！" },
+  { date: "2026-03-14", name: "明下", amount: "6", message: "希望能有书籍功能T T感谢作者" },
+  { date: "2026-03-14", name: "Miki", amount: "3", message: "" },
+  { date: "2026-03-14", name: "ay4ne", amount: "1", message: "干巴爹" },
   { date: "2026-03-14", name: "匿名", amount: "0.5", message: "" },
   { date: "2026-03-14", name: "匿名", amount: "10", message: "有点走马灯了" },
   { date: "2026-03-14", name: "我要看かぐや！", amount: "3", message: "这样对大家分享喜爱的事物或许也不错呢" },
