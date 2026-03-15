@@ -34,8 +34,7 @@ function buildTallyEmbedUrl(value: string): string {
 
 export function SiteFooter({ className, kind }: SiteFooterProps) {
   const tallyFormUrl =
-    process.env.NEXT_PUBLIC_TALLY_FORM_URL?.trim() ||
-    process.env.NEXT_PUBLIC_FEEDBACK_TALLY_URL?.trim();
+    process.env.NEXT_PUBLIC_TALLY_FORM_URL?.trim();
   const tallyEmbedUrl = tallyFormUrl ? buildTallyEmbedUrl(tallyFormUrl) : "";
   const hitsHost = getSiteHostname(getPublicSiteUrl());
   const isWorkKind = kind === "work";
